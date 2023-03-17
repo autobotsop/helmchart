@@ -1,0 +1,85 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ template "validatorapi.name" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ template "validatorapi.name" . }}
+    chart: {{ template "validatorapi.chart" . }}
+    release: {{ template "validatorapi.name" . }}{{- with .Values.deploymentAnnotations }}  annotations:{{ toYaml . | indent 4 }}{{- end }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ template "validatorapi.name" . }}
+      release: {{ .Release.Name }}
+  strategy:
+{{- toYaml .Values.strategy | nindent 4 }}
+  template:
+    metadata:
+      labels:
+        app: {{ template "validatorapi.name" . }}
+        release: {{ .Release.Name }}
+{{- with .Values.podLabels }}
+{{ toYaml . | indent 8 }}
+{{- end }}
+{{- with .Values.podAnnotations }}
+      annotations:
+{{ toYaml . | indent 8 }}
+{{- end }}
+    spec:
+      {{- if .Values.schedulerName }}
+      schedulerName: "{{ .Values.schedulerName }}"
+      {{- end }}
+      {{- if .Values.validator.image.imagePullSecrets }}
+      imagePullSecrets:
+{{ toYaml .Values.validator.image.imagePullSecrets | indent 8 }}
+      {{- end }}
+      {{- if .Values.priorityClassName }}
+      priorityClassName: "{{ .Values.priorityClassName }}"
+      {{- end }}
+      containers:
+        - name: validatorapi
+          image: {{ .Values.validator.image.repository}}:{{ .Values.validator.image.tag }}
+          imagePullPolicy: {{ .Values.validator.image.imagePullPolicy  }}
+          command: 
+            {{- toYaml .Values.validator.command | nindent 12 }}
+          ports: 
+            - name: apiport
+              containerPort: 8003
+              protocol: TCP
+            - name: rpcport
+              containerPort: 22209
+              protocol: TCP
+          env:
+{{ toYaml .Values.validator.env | indent 12 }}
+          resources:
+            {{- toYaml .Values.validator.resources | nindent 12 }}
+          volumeMounts:
+            {{- if .Values.validator.volumeMounts }}
+            {{- toYaml .Values.validator.volumeMounts | nindent 12 }}
+            {{- end }}
+            {{- range $key, $value := .Values.validator.secretMounts }}
+            - name: {{ $key }}
+              mountPath: {{ $value.mountPath }}
+            {{- end }}
+        {{- with .Values.validator.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.validator.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.validator.tolerations }}
+      tolerations:
+        {{ toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+        {{- toYaml .Values.validator.volumes | default "" | nindent 8 }}
+        {{- range $key, $value := .Values.validator.secretMounts }}
+        - name: {{ $key }}
+          secret:
+            secretName: {{ $value.secretName }}
+            defaultMode: {{ $value.defaultMode }}
+        {{- end }}

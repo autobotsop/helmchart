@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nacos-configuration
+  namespace: {{ .Release.Namespace }}
+data:
+{{ toYaml .Values.nacos.configurationFiles | indent 4 }}

@@ -1,0 +1,131 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ template "nacos.name" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ template "nacos.name" . }}
+    chart: {{ template "nacos.chart" . }}
+    release: {{ template "nacos.name" . }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ template "nacos.name" . }}
+      release: {{ template "nacos.name" . }}
+  serviceName: {{ template "nacos.name" . }}
+  updateStrategy:
+    type: {{ .Values.updateStrategy.type }}
+    {{- if .Values.rollingUpdatePartition }}
+    {{- if (eq "Recreate" .Values.updateStrategy) }}
+    rollingUpdate: null
+    {{- else }}
+    rollingUpdate:
+      partition: {{ .Values.rollingUpdatePartition }}
+    {{- end }}
+    {{- end }}
+  template:
+    metadata:
+      labels:
+        app: {{ template "nacos.name" . }}
+        release: {{ template "nacos.name" . }}
+{{- with .Values.nacos.podLabels }}
+{{ toYaml . | indent 8 }}
+{{- end }}
+{{- with .Values.nacos.podAnnotations }}
+      annotations:
+{{ toYaml . | indent 8 }}
+{{- end }}
+    spec:
+      {{- if .Values.nacos.schedulerName }}
+      schedulerName: "{{ .Values.nacos.schedulerName }}"
+      {{- end }}
+      {{- if .Values.nacos.image.imagePullSecrets }}
+      imagePullSecrets:
+{{ toYaml .Values.nacos.image.imagePullSecrets | indent 8 }}
+      {{- end }}
+      securityContext:
+        fsGroup: {{ .Values.nacos.securityContext.fsGroup }}
+        runAsUser: {{ .Values.nacos.securityContext.runAsUser }}
+      containers:
+        - name: nacos
+          image: {{ .Values.nacos.image.repository}}:{{ .Values.nacos.image.tag }}
+          imagePullPolicy: {{ .Values.nacos.image.imagePullPolicy  }}
+          env:
+{{ toYaml .Values.nacos.env | indent 12 }}
+          ports:
+            - name: http
+              containerPort: 8848
+              protocol: TCP
+          {{- if .Values.nacos.livenessProbe.enabled }}
+          livenessProbe:
+            tcpSocket: 
+              port: 8848
+            initialDelaySeconds: {{ .Values.nacos.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.nacos.livenessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.nacos.livenessProbe.timeoutSeconds }}
+            successThreshold: {{ .Values.nacos.livenessProbe.successThreshold }}
+            failureThreshold: {{ .Values.nacos.livenessProbe.failureThreshold }}
+          {{- end }}
+          {{- if .Values.nacos.readinessProbe.enabled}}
+          readinessProbe:
+            tcpSocket: 
+              port: 8848
+            initialDelaySeconds: {{ .Values.nacos.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.nacos.readinessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.nacos.readinessProbe.timeoutSeconds }}
+            successThreshold: {{ .Values.nacos.readinessProbe.successThreshold }}
+            failureThreshold: {{ .Values.nacos.readinessProbe.failureThreshold }}
+          {{- end }}
+          resources:
+            {{- toYaml .Values.nacos.resources | nindent 12 }}
+          volumeMounts:
+            - mountPath: {{ .Values.nacos.volumes.timecontainerPath }}
+              readOnly: {{ .Values.nacos.volumes.readOnlyType }}
+              name: {{ .Values.nacos.volumes.timevolumeName }} 
+            - mountPath: {{ .Values.nacos.volumes.datacontainerPath }} 
+              name: {{ .Values.nacos.volumes.datavolumeName }}        
+            - mountPath: {{ .Values.nacos.volumes.logscontainerPath }} 
+              name: {{ .Values.nacos.volumes.logsvolumeName }}
+            - mountPath: {{ .Values.nacos.volumes.confcontainerPath }}
+              name: {{ .Values.nacos.volumes.confvolumeName }}            
+          lifecycle: 
+          {{- toYaml .Values.nacos.lifecycle | nindent 12 }}
+        {{- with .Values.nacos.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.nacos.affinity }}
+      affinity:
+        {{ toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.nacos.tolerations }}
+      tolerations:
+        {{ toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+        - name: {{ .Values.nacos.volumes.timevolumeName }}
+          hostPath:
+            path: {{ .Values.nacos.volumes.timehostPath }}
+        - name: {{ .Values.nacos.volumes.logsvolumeName }}
+          hostPath:
+            path: {{ .Values.nacos.volumes.logshostPath }}   
+        - name: {{ template "nacos.name" . }}-configuration
+          configMap:
+            name: {{ template "nacos.name" . }}-configuration
+        - name: {{ .Values.nacos.volumes.datavolumeName }}              
+        {{- if .Values.nacos.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ .Values.nacos.persistence.claimName }}         
+      {{- end }} 
+  volumeClaimTemplates:
+    - metadata:
+        name: {{ .Values.nacos.volumes.datavolumeName }}
+        labels:
+          app: "{{ template "nacos.name" . }}"
+          release: "{{ template "nacos.name" . }}"
+      spec:
+        accessModes: [{{ .Values.nacos.persistence.accessModes | quote }}]
+        resources:
+          requests: 
+            storage: {{ .Values.nacos.persistence.size | quote }}                

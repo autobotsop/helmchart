@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ template "ermsapi.name" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ template "ermsapi.name" . }}
+    chart: {{ template "ermsapi.chart" . }}
+    release: {{ template "ermsapi.name" . }}
+spec:
+  type: {{ .Values.erms.service.type }}
+  ports:
+  {{- range $key, $value := .Values.erms.service.ports }}
+    - name: {{ $key }}
+{{ toYaml $value | indent 6 }}
+  {{- end }}
+  selector:
+    app: {{ template "ermsapi.name" . }}
+    release: {{ template "ermsapi.name" . }}

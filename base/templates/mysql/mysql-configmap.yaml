@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ template "mysql.name" . }}-configuration
+  namespace: {{ .Release.Namespace }}
+data:
+{{ toYaml .Values.mysql.configurationFiles | indent 2 }}

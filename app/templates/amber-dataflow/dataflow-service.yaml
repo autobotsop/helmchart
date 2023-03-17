@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ template "dataflow.name" . }}
+  labels:
+    app: {{ template "dataflow.name" . }}
+    chart: {{ template "dataflow.chart" . }}
+    release: {{ template "dataflow.name" . }}
+spec:
+  type: {{ .Values.dataflow.service.type }}
+  ports:
+  {{- range $key, $value := .Values.dataflow.service.ports }}
+    - name: {{ $key }}
+{{ toYaml $value | indent 6 }}
+  {{- end }}
+  selector:
+    app: {{ template "dataflow.name" . }}
+    release: {{ template "dataflow.name" . }}

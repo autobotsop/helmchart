@@ -1,0 +1,79 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ template "rocketmq.name" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ template "rocketmq.name" . }}
+    chart: {{ template "rocketmq.chart" . }}
+    release: {{ template "rocketmq.name" . }}{{- with .Values.deploymentAnnotations }}  annotations:{{ toYaml . | indent 4 }}{{- end }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ template "rocketmq.name" . }}
+      release: {{ template "rocketmq.name" . }}
+  strategy:
+{{- toYaml .Values.strategy | nindent 4 }}
+  template:
+    metadata:
+      labels:
+        app: {{ template "rocketmq.name" . }}
+        release: {{ template "rocketmq.name" . }}
+{{- with .Values.podLabels }}
+{{ toYaml . | indent 8 }}
+{{- end }}
+{{- with .Values.podAnnotations }}
+      annotations:
+{{ toYaml . | indent 8 }}
+{{- end }}
+    spec:
+      schedulerName: "{{ .Values.schedulerName }}"
+      {{- if .Values.rocketmq.image.imagePullSecrets }}
+      imagePullSecrets:
+{{ toYaml .Values.rocketmq.image.imagePullSecrets | indent 8 }}
+      {{- end }}
+      containers:
+        - name: rocketmq
+          image: {{ .Values.rocketmq.image.repository}}:{{ .Values.rocketmq.image.tag }}
+          imagePullPolicy: {{ .Values.rocketmq.image.imagePullPolicy  }}
+          command: 
+            {{- toYaml .Values.rocketmq.command | nindent 12 }}
+          args:
+            {{- toYaml .Values.rocketmq.args | nindent 12 }}
+          ports:
+            - name: httpport
+              containerPort: 8080
+              protocol: TCP            
+          env:
+{{ toYaml .Values.rocketmq.env | indent 12 }}   
+          resources:
+            {{- toYaml .Values.rocketmq.resources | nindent 12 }}
+          volumeMounts:
+            - mountPath: {{ .Values.rocketmq.volumes.timecontainerPath }}
+              readOnly: {{ .Values.rocketmq.volumes.readOnlyType }}
+              name: {{ .Values.rocketmq.volumes.timevolumeName }}
+          lifecycle: 
+          {{- toYaml .Values.rocketmq.lifecycle | nindent 12 }}
+        {{- with .Values.rocketmq.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.rocketmq.affinity }}
+      affinity:
+        {{ toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.rocketmq.tolerations }}
+      tolerations:
+        {{ toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+        - name: localtime
+          hostPath: 
+            path: {{ .Values.rocketmq.volumes.timehostPath }}
+        {{- range $key, $value := .Values.rocketmq.secretMounts }}
+        - name: {{ $key }}
+          secret:
+            secretName: {{ $value.secretName }}
+            defaultMode: {{ $value.defaultMode }}
+        {{- end }}

@@ -1,0 +1,104 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ template "nginx.name" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ template "nginx.name" . }}
+    chart: {{ template "nginx.chart" . }}
+    release: {{ template "nginx.name" . }}
+spec:
+  replicas: {{ .Values.nginx.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ template "nginx.name" . }}
+      release: {{ template "nginx.name" . }}
+  strategy:
+{{- toYaml .Values.nginx.strategy | nindent 4 }}
+  template:
+    metadata:
+      labels:
+        app: {{ template "nginx.name" . }}
+        release: {{ template "nginx.name" . }}
+    spec:
+      {{- if .Values.nginx.schedulerName }}
+      schedulerName: "{{ .Values.schedulerName }}"
+      {{- end }}
+      imagePullSecrets:
+{{ toYaml .Values.nginx.image.imagePullSecrets | indent 8 }}
+      {{- if .Values.nginx.priorityClassName }}
+      priorityClassName: "{{ .Values.nginx.priorityClassName }}"
+      {{- end }}
+      securityContext:
+        fsGroup: {{ .Values.nginx.securityContext.fsGroup }}
+        runAsUser: {{ .Values.nginx.securityContext.runAsUser }}
+      containers:
+        - name: nginx
+          image: {{ .Values.nginx.image.repository}}:{{ .Values.nginx.image.tag }}
+          imagePullPolicy: {{ .Values.nginx.image.imagePullPolicy  }}
+          command: 
+            {{- toYaml .Values.nginx.command | nindent 12 }}
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP  
+          {{- if .Values.nginx.livenessProbe.enabled }}
+          livenessProbe:
+            tcpSocket: 
+              port: 80
+            initialDelaySeconds: {{ .Values.nginx.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.nginx.livenessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.nginx.livenessProbe.timeoutSeconds }}
+            successThreshold: {{ .Values.nginx.livenessProbe.successThreshold }}
+            failureThreshold: {{ .Values.nginx.livenessProbe.failureThreshold }}
+          {{- end }}
+          {{- if .Values.nginx.readinessProbe.enabled}}
+          readinessProbe:
+            tcpSocket: 
+              port: 80
+            initialDelaySeconds: {{ .Values.nginx.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.nginx.readinessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.nginx.readinessProbe.timeoutSeconds }}
+            successThreshold: {{ .Values.nginx.readinessProbe.successThreshold }}
+            failureThreshold: {{ .Values.nginx.readinessProbe.failureThreshold }}
+          {{- end }}
+          env:
+{{ toYaml .Values.nginx.env | indent 12 }}
+          resources:
+            {{- toYaml .Values.nginx.resources | nindent 12 }}
+          volumeMounts:
+            - mountPath: {{ .Values.nginx.volumes.timecontainerPath }}
+              readOnly: {{ .Values.nginx.volumes.readOnlyType }}
+              name: time
+            - mountPath: {{ .Values.nginx.volumes.nginxcontainerPath }}
+              subPath: {{ .Values.nginx.volumes.nginxsubPath }}
+              name: conf
+            - mountPath: {{ .Values.nginx.volumes.tmpcontainerPath }}
+              name: tmp
+            - mountPath: {{ .Values.nginx.volumes.containerPath}} 
+              name: data          
+        {{- with .Values.nginx.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.nginx.affinity }}
+      affinity:
+        {{ toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.nginx.tolerations }}
+      tolerations:
+        {{ toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+        - name: data
+          hostPath:
+            path: {{ .Values.nginx.volumes.hostPath }}
+        - name: time
+          hostPath:
+            path: {{ .Values.nginx.volumes.timehostPath }}
+        - name: tmp
+          hostPath:
+            path: {{ .Values.nginx.volumes.tmphostPath }}        
+        - name: conf
+          configMap:
+            name: conf

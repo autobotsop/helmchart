@@ -1,0 +1,99 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ template "namesrv.name" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ template "namesrv.name" . }}
+    chart: {{ template "namesrv.chart" . }}
+    release: {{ template "namesrv.name" . }}{{- with .Values.deploymentAnnotations }}  annotations:{{ toYaml . | indent 4 }}{{- end }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ template "namesrv.name" . }}
+      release: {{ template "namesrv.name" . }}
+  strategy:
+{{- toYaml .Values.namesrv.strategy | nindent 4 }}
+  template:
+    metadata:
+      labels:
+        app: {{ template "namesrv.name" . }}
+        release: {{ template "namesrv.name" . }}
+{{- with .Values.podLabels }}
+{{ toYaml . | indent 8 }}
+{{- end }}
+{{- with .Values.podAnnotations }}
+      annotations:
+{{ toYaml . | indent 8 }}
+{{- end }}
+    spec:
+      {{- if .Values.schedulerName }}
+      schedulerName: "{{ .Values.schedulerName }}"
+      {{- end }}
+      {{- if .Values.namesrv.image.imagePullSecrets }}
+      imagePullSecrets:
+{{ toYaml .Values.namesrv.image.imagePullSecrets | indent 8 }}
+      {{- end }}
+      {{- if .Values.namesrv.priorityClassName }}
+      priorityClassName: "{{ .Values.namesrv.priorityClassName }}"
+      {{- end }}
+      {{- if .Values.namesrv.securityContext.enabled }}
+      securityContext:
+        fsGroup: {{ .Values.namesrv.securityContext.fsGroup }}
+        runAsUser: {{ .Values.namesrvsecurityContext.runAsUser }}
+      {{- end }}
+      containers:
+        - name: namesrv
+          image: {{ .Values.namesrv.image.repository}}:{{ .Values.namesrv.image.tag }}
+          imagePullPolicy: {{ .Values.namesrv.image.imagePullPolicy  }}
+          command: 
+            {{- toYaml .Values.namesrv.command | nindent 12 }}
+          ports:
+            - name: namesrv
+              containerPort: 9876
+              protocol: TCP     
+          env:
+{{ toYaml .Values.namesrv.env | indent 12 }}   
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - mountPath: {{ .Values.namesrv.volumes.timecontainerPath }}
+              readOnly: {{ .Values.namesrv.volumes.readOnlyType }}
+              name: {{ .Values.namesrv.volumes.timevolumeName }}
+            - mountPath: {{ .Values.namesrv.volumes.logscontainerPath }}
+              name: {{ .Values.namesrv.volumes.logsvolumeName }}
+            - mountPath: {{ .Values.namesrv.volumes.storecontainerPath }}
+              name: {{ .Values.namesrv.volumes.storevolumeName }}
+          {{- if .Values.namesrv.securityContext.enabled }}
+          lifecycle: 
+          {{- toYaml .Values.namesrv.lifecycle | nindent 12 }}
+          {{- end }}
+        {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.namesrv.affinity }}
+      affinity:
+        {{ toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.namesrv.tolerations }}
+      tolerations:
+        {{ toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+        - name: localtime
+          hostPath: 
+            path: {{ .Values.namesrv.volumes.timehostPath }}
+        - name: logs
+          hostPath:
+            path: {{ .Values.namesrv.volumes.logshostPath }}
+        - name: store
+          hostPath:
+            path: {{ .Values.namesrv.volumes.storehostPath }}
+        {{- range $key, $value := .Values.namesrv.secretMounts }}
+        - name: {{ $key }}
+          secret:
+            secretName: {{ $value.secretName }}
+            defaultMode: {{ $value.defaultMode }}
+        {{- end }}

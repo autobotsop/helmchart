@@ -1,0 +1,109 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ template "broker.name" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ template "broker.name" . }}
+    chart: {{ template "broker.chart" . }}
+    release: {{ template "broker.name" . }}{{- with .Values.deploymentAnnotations }}  annotations:{{ toYaml . | indent 4 }}{{- end }}
+spec:
+  replicas: {{ .Values.broker.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ template "broker.name" . }}
+      release: {{ template "broker.name" . }}
+  strategy:
+{{- toYaml .Values.broker.strategy | nindent 4 }}
+  template:
+    metadata:
+      labels:
+        app: {{ template "broker.name" . }}
+        release: {{ template "broker.name" . }}
+{{- with .Values.podLabels }}
+{{ toYaml . | indent 8 }}
+{{- end }}
+{{- with .Values.podAnnotations }}
+      annotations:
+{{ toYaml . | indent 8 }}
+{{- end }}
+    spec:
+      {{- if .Values.broker.schedulerName }}
+      schedulerName: "{{ .Values.broker.schedulerName }}"
+      {{- end }}
+      {{- if .Values.broker.image.imagePullSecrets }}
+      imagePullSecrets:
+{{ toYaml .Values.broker.image.imagePullSecrets | indent 8 }}
+      {{- end }}
+      {{- if .Values.broker.priorityClassName }}
+      priorityClassName: "{{ .Values.broker.priorityClassName }}"
+      {{- end }}
+      {{- if .Values.broker.securityContext.enabled }}
+      securityContext:
+        fsGroup: {{ .Values.broker.securityContext.fsGroup }}
+        runAsUser: {{ .Values.broker.securityContext.runAsUser }}
+      {{- end }}
+      containers:
+        - name: broker
+          image: {{ .Values.broker.image.repository}}:{{ .Values.broker.image.tag }}
+          imagePullPolicy: {{ .Values.broker.image.imagePullPolicy  }}
+          command: 
+            {{- toYaml .Values.broker.command | nindent 12 }}
+          args: 
+            {{- toYaml .Values.broker.args | nindent 12 }}          
+          ports:
+            - name: vipport
+              containerPort: 10909
+              protocol: TCP
+            - name: broker
+              containerPort: 10911
+              protocol: TCP  
+          env:
+{{ toYaml .Values.broker.env | indent 12 }}       
+          resources:
+            {{- toYaml .Values.broker.resources | nindent 12 }}
+          volumeMounts:
+            - mountPath: {{ .Values.broker.volumes.timecontainerPath }}
+              readOnly: {{ .Values.broker.volumes.readOnlyType }}
+              name: {{ .Values.broker.volumes.timevolumeName }}
+            - mountPath: {{ .Values.broker.volumes.logscontainerPath }}
+              name: {{ .Values.broker.volumes.logsvolumeName }}
+            - mountPath: {{ .Values.broker.volumes.storecontainerPath }}
+              name: {{ .Values.broker.volumes.storevolumeName }}
+            - mountPath: {{ .Values.broker.volumes.confcontainerPath }}
+              name: {{ .Values.broker.volumes.confvolumeName }}  
+          {{- if .Values.broker.securityContext.enabled }}
+          lifecycle: 
+          {{- toYaml .Values.lifecycle | nindent 12 }}
+          {{- end }}
+        {{- with .Values.broker.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.broker.affinity }}
+      affinity:
+        {{ toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.broker.tolerations }}
+      tolerations:
+        {{ toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+        - name: localtime
+          hostPath: 
+            path: {{ .Values.broker.volumes.timehostPath }}
+        - name: logs
+          hostPath:
+            path: {{ .Values.broker.volumes.logshostPath }}
+        - name: store
+          hostPath:
+            path: {{ .Values.broker.volumes.storehostPath }}
+        - name: {{ template "broker.name" . }}-configuration
+          configMap:
+            name: {{ template "broker.name" . }}-configuration
+        {{- range $key, $value := .Values.secretMounts }}
+        - name: {{ $key }}
+          secret:
+            secretName: {{ $value.secretName }}
+            defaultMode: {{ $value.defaultMode }}
+        {{- end }}

@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ template "dataarchivesapi.name" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ template "dataarchivesapi.name" . }}
+    chart: {{ template "dataarchivesapi.chart" . }}
+    release: {{ template "dataarchivesapi.name" . }}
+spec:
+  type: {{ .Values.dataarchives.service.type }}
+  ports:
+  {{- range $key, $value := .Values.dataarchives.service.ports }}
+    - name: {{ $key }}
+{{ toYaml $value | indent 6 }}
+  {{- end }}
+  selector:
+    app: {{ template "dataarchivesapi.name" . }}
+    release: {{ template "dataarchivesapi.name" . }}

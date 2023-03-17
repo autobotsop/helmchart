@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ template "validatorapi.name" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ template "validatorapi.name" . }}
+    chart: {{ template "validatorapi.chart" . }}
+    release: {{ template "validatorapi.name" . }}
+spec:
+  type: {{ .Values.validator.service.type }}
+  ports:
+  {{- range $key, $value := .Values.validator.service.ports }}
+    - name: {{ $key }}
+{{ toYaml $value | indent 6 }}
+  {{- end }}
+  selector:
+    app: {{ template "validatorapi.name" . }}
+    release: {{ template "validatorapi.name" . }}

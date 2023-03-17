@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: esconfig
+  namespace: {{ .Release.Namespace }}
+data:
+{{ toYaml .Values.elasticsearch.esConfig | indent 4 }}

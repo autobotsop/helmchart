@@ -1,0 +1,26 @@
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: {{ .Values.cdn.persistence.claimName }}
+  namespace: {{ .Release.Namespace }}
+{{- with .Values.cdn.persistence.annotations  }}
+  annotations:
+{{ toYaml . | indent 4 }}
+{{- end }}
+  labels:
+    app: {{ template "cdn.name" . }}
+    chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+    release: "{{ template "cdn.name" . }}"
+spec:
+  accessModes:
+    - {{ .Values.cdn.persistence.accessModes | quote }}
+  resources:
+    requests:
+      storage: {{ .Values.cdn.persistence.size | quote }}
+{{- if .Values.cdn.persistence.storageClass }}
+{{- if (eq "-" .Values.cdn.persistence.storageClass) }}
+  storageClassName: ""
+{{- else }}
+  storageClassName: "{{ .Values.cdn.persistence.storageClass }}"
+{{- end }}
+{{- end }}

@@ -1,0 +1,74 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ template "kibana.name" . }}
+  labels:
+    app: {{ template "kibana.name" . }}
+    release: {{ template "kibana.name" . }}
+spec:
+  replicas: {{ .Values.kibana.replicas }}
+  strategy:
+{{ toYaml .Values.kibana.updateStrategy | indent 4 }}
+  selector:
+    matchLabels:
+      app: {{ template "kibana.name" . }}
+      release: {{ template "kibana.name" . }}
+  template:
+    metadata:
+      labels:
+        app: {{ template "kibana.name" . }}
+        release: {{ template "kibana.name" . }}
+    spec:
+      volumes:
+        - name: {{ template "kibana.name" . }}-config
+          configMap:
+            name: {{ template "kibana.name" . }}-config
+      affinity:
+{{ toYaml .Values.kibana.affinity | indent 8 }}
+      tolerations:
+{{ toYaml .Values.kibana.tolerations | indent 8 }}
+      imagePullSecrets:
+{{ toYaml .Values.kibana.image.imagePullSecrets | indent 8 }}
+      containers:
+        - name: kibana
+          image: {{ .Values.kibana.image.repository}}:{{ .Values.kibana.image.imageTag }}
+          imagePullPolicy: {{ .Values.kibana.image.imagePullPolicy  }}          
+          ports:
+            - name: httpport
+              containerPort: 5601
+              protocol: TCP
+          resources:
+{{ toYaml .Values.kibana.resources | indent 12 }}
+          env:
+{{ toYaml .Values.kibana.env | indent 12 }}   
+          readinessProbe:
+{{ toYaml .Values.kibana.readinessProbe | indent 12 }}
+            exec:
+              command: 
+                - sh
+                - -c
+                - |
+                  #!/usr/bin/env bash -e
+                  http () {
+                      local path="${1}"
+                      set -- -XGET -s --fail
+  
+                      if [ -n "${ELASTIC_USERNAME}" ] && [ -n "${ELASTIC_PASSWORD}" ]; then
+                        set -- "$@" -u "${ELASTIC_USERNAME}:${ELASTIC_PASSWORD}"
+                      fi
+  
+                      curl -k "$@" "http://localhost:5601${path}"
+                  }
+    
+                  http "{{ .Values.kibana.healthCheckPath }}"
+          volumeMounts:
+            {{- range .Values.kibana.secretMounts }}
+            - name: {{ .name }}
+              mountPath: {{ .path }}
+            {{- end }}
+            {{- range $path, $config := .Values.kibana.kibanaConfig }}
+            - name: kibana-config
+              mountPath: /usr/share/kibana/config/{{ $path }}
+              subPath: {{ $path }}
+            {{- end -}}
+  

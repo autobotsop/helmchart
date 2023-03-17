@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ template "elasticsearch.name" . }}
+  labels:
+    app: {{ template "elasticsearch.name" . }}
+    chart: {{ template "elasticsearch.chart" . }}
+    release: {{ template "elasticsearch.name" . }}
+spec:
+  type: {{ .Values.elasticsearch.service.type }}
+  ports:
+  {{- range $key, $value := .Values.elasticsearch.service.ports }}
+    - name: {{ $key }}
+{{ toYaml $value | indent 6 }}
+  {{- end }}
+  selector:
+    app: {{ template "elasticsearch.name" . }}
+    release: {{ template "elasticsearch.name" . }}

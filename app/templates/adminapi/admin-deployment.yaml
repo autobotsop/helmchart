@@ -1,0 +1,88 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ template "adminapi.name" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ template "adminapi.name" . }}
+    chart: {{ template "adminapi.chart" . }}
+    release: {{ template "adminapi.name" . }}{{- with .Values.deploymentAnnotations }}  annotations:{{ toYaml . | indent 4 }}{{- end }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ template "adminapi.name" . }}
+      release: {{ template "adminapi.name" . }}
+  strategy:
+{{- toYaml .Values.strategy | nindent 4 }}
+  template:
+    metadata:
+      labels:
+        app: {{ template "adminapi.name" . }}
+        release: {{ template "adminapi.name" . }}
+{{- with .Values.podLabels }}
+{{ toYaml . | indent 8 }}
+{{- end }}
+{{- with .Values.podAnnotations }}
+      annotations:
+{{ toYaml . | indent 8 }}
+{{- end }}
+    spec:
+      {{- if .Values.schedulerName }}
+      schedulerName: "{{ .Values.schedulerName }}"
+      {{- end }}
+      {{- if .Values.admin.image.imagePullSecrets }}
+      imagePullSecrets:
+{{ toYaml .Values.admin.image.imagePullSecrets | indent 8 }}
+      {{- end }}
+      {{- if .Values.priorityClassName }}
+      priorityClassName: "{{ .Values.priorityClassName }}"
+      {{- end }}
+      containers:
+        - name: adminapi
+          image: {{ .Values.admin.image.repository}}:{{ .Values.admin.image.tag }}
+          imagePullPolicy: {{ .Values.admin.image.imagePullPolicy  }}
+          command: 
+            {{- toYaml .Values.admin.command | nindent 12 }}
+          ports: 
+            - name: apiport
+              containerPort: 8001
+              protocol: TCP
+            - name: rpcport
+              containerPort: 22200
+              protocol: TCP  
+            - name: jvmport
+              containerPort: 48001
+              protocol: TCP                              
+          env:
+{{ toYaml .Values.admin.env | indent 12 }}
+          resources:
+            {{- toYaml .Values.admin.resources | nindent 12 }}
+          volumeMounts:
+            {{- if .Values.admin.volumeMounts }}
+            {{- toYaml .Values.admin.volumeMounts | nindent 12 }}
+            {{- end }}
+            {{- range $key, $value := .Values.admin.secretMounts }}
+            - name: {{ $key }}
+              mountPath: {{ $value.mountPath }}
+            {{- end }}
+        {{- with .Values.admin.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.admin.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.admin.tolerations }}
+      tolerations:
+        {{ toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+        {{- toYaml .Values.admin.volumes | default "" | nindent 8 }}
+        {{- range $key, $value := .Values.admin.secretMounts }}
+        - name: {{ $key }}
+          secret:
+            secretName: {{ $value.secretName }}
+            defaultMode: {{ $value.defaultMode }}
+        {{- end }}

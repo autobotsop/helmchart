@@ -1,0 +1,82 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ template "docview.name" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ template "docview.name" . }}
+    chart: {{ template "docview.chart" . }}
+    release: {{ template "docview.name" . }}{{- with .Values.deploymentAnnotations }}  annotations:{{ toYaml . | indent 4 }}{{- end }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ template "docview.name" . }}
+      release: {{ template "docview.name" . }}
+  strategy:
+{{- toYaml .Values.strategy | nindent 4 }}
+  template:
+    metadata:
+      labels:
+        app: {{ template "docview.name" . }}
+        release: {{ template "docview.name" . }}
+{{- with .Values.podLabels }}
+{{ toYaml . | indent 8 }}
+{{- end }}
+{{- with .Values.podAnnotations }}
+      annotations:
+{{ toYaml . | indent 8 }}
+{{- end }}
+    spec:
+      {{- if .Values.schedulerName }}
+      schedulerName: "{{ .Values.schedulerName }}"
+      {{- end }}
+      {{- if .Values.docview.image.imagePullSecrets }}
+      imagePullSecrets:
+{{ toYaml .Values.docview.image.imagePullSecrets | indent 8 }}
+      {{- end }}
+      {{- if .Values.priorityClassName }}
+      priorityClassName: "{{ .Values.priorityClassName }}"
+      {{- end }}
+      containers:
+        - name: docview
+          image: {{ .Values.docview.image.repository}}:{{ .Values.docview.image.tag }}
+          imagePullPolicy: {{ .Values.docview.image.imagePullPolicy  }}
+          command: 
+            {{- toYaml .Values.docview.command | nindent 12 }}
+          ports: 
+            - name: http
+              containerPort: 7004
+              protocol: TCP              
+          env:
+{{ toYaml .Values.docview.env | indent 12 }}
+          resources:
+            {{- toYaml .Values.docview.resources | nindent 12 }}
+          volumeMounts:
+            {{- if .Values.docview.volumeMounts }}
+            {{- toYaml .Values.docview.volumeMounts | nindent 12 }}
+            {{- end }}
+            {{- range $key, $value := .Values.docview.secretMounts }}
+            - name: {{ $key }}
+              mountPath: {{ $value.mountPath }}
+            {{- end }}
+        {{- with .Values.docview.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.docview.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.docview.tolerations }}
+      tolerations:
+        {{ toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+        {{- toYaml .Values.docview.volumes | default "" | nindent 8 }}
+        {{- range $key, $value := .Values.docview.secretMounts }}
+        - name: {{ $key }}
+          secret:
+            secretName: {{ $value.secretName }}
+            defaultMode: {{ $value.defaultMode }}
+        {{- end }}

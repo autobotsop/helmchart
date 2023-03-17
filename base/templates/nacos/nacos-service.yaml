@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ template "nacos.name" . }}
+  labels:
+    app: {{ template "nacos.name" . }}
+    chart: {{ template "nacos.chart" . }}
+    release: {{ template "nacos.name" . }}
+spec:
+  type: {{ .Values.nacos.service.type }}
+  ports:
+  {{- range $key, $value := .Values.nacos.service.ports }}
+    - name: {{ $key }}
+{{ toYaml $value | indent 6 }}
+  {{- end }}
+  selector:
+    app: {{ template "nacos.name" . }}
+    release: {{ template "nacos.name" . }}

@@ -1,0 +1,85 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ template "osprey.name" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ template "osprey.name" . }}
+    chart: {{ template "osprey.chart" . }}
+    release: {{ template "osprey.name" . }}{{- with .Values.deploymentAnnotations }}  annotations:{{ toYaml . | indent 4 }}{{- end }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ template "osprey.name" . }}
+      release: {{ template "osprey.name" . }}
+  strategy:
+{{- toYaml .Values.strategy | nindent 4 }}
+  template:
+    metadata:
+      labels:
+        app: {{ template "osprey.name" . }}
+        release: {{ template "osprey.name" . }}
+{{- with .Values.podLabels }}
+{{ toYaml . | indent 8 }}
+{{- end }}
+{{- with .Values.podAnnotations }}
+      annotations:
+{{ toYaml . | indent 8 }}
+{{- end }}
+    spec:
+      {{- if .Values.schedulerName }}
+      schedulerName: "{{ .Values.schedulerName }}"
+      {{- end }}
+      {{- if .Values.osprey.image.imagePullSecrets }}
+      imagePullSecrets:
+{{ toYaml .Values.osprey.image.imagePullSecrets | indent 8 }}
+      {{- end }}
+      {{- if .Values.priorityClassName }}
+      priorityClassName: "{{ .Values.priorityClassName }}"
+      {{- end }}
+      containers:
+        - name: osprey
+          image: {{ .Values.osprey.image.repository}}:{{ .Values.osprey.image.tag }}
+          imagePullPolicy: {{ .Values.osprey.image.imagePullPolicy  }}
+          command: 
+            {{- toYaml .Values.osprey.command | nindent 12 }}
+          ports: 
+            - name: apiport
+              containerPort: 8004
+              protocol: TCP
+            - name: rpcport
+              containerPort: 22206
+              protocol: TCP
+          env:
+{{ toYaml .Values.osprey.env | indent 12 }}
+          resources:
+            {{- toYaml .Values.osprey.resources | nindent 12 }}
+          volumeMounts:
+            {{- if .Values.osprey.volumeMounts }}
+            {{- toYaml .Values.osprey.volumeMounts | nindent 12 }}
+            {{- end }}
+            {{- range $key, $value := .Values.osprey.secretMounts }}
+            - name: {{ $key }}
+              mountPath: {{ $value.mountPath }}
+            {{- end }}
+        {{- with .Values.osprey.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.osprey.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.osprey.tolerations }}
+      tolerations:
+        {{ toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+        {{- toYaml .Values.osprey.volumes | default "" | nindent 8 }}
+        {{- range $key, $value := .Values.osprey.secretMounts }}
+        - name: {{ $key }}
+          secret:
+            secretName: {{ $value.secretName }}
+            defaultMode: {{ $value.defaultMode }}
+        {{- end }}

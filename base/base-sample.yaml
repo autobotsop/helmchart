@@ -1,0 +1,1338 @@
+# Source: amberdata-base/templates/broker/broker-configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: broker-configuration
+  namespace: default
+data:
+    broker.conf: |-
+      brokerClusterName = DefaultCluster
+      brokerName = broker-a
+      brokerId = 0
+      deleteWhen = 04
+      fileReservedTime = 48
+      brokerRole = ASYNC_MASTER
+      flushDiskType = ASYNC_FLUSH
+      brokerIP1 = broker.base.svc.cluster.local
+---
+# Source: amberdata-base/templates/elasticsearch/conf-configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: esconfig
+  namespace: default
+data:
+    elasticsearch.yml: "cluster.name: \"shengzhou-cluster\"\nnetwork.host: 0.0.0.0\nopendistro_security.ssl.transport.pemcert_filepath:
+      esnode.pem\nopendistro_security.ssl.transport.pemkey_filepath: esnode-key.pem\nopendistro_security.ssl.transport.pemtrustedcas_filepath:
+      root-ca.pem\nopendistro_security.ssl.transport.enforce_hostname_verification: false\nopendistro_security.ssl.http.enabled:
+      false\nopendistro_security.ssl.http.pemcert_filepath: esnode.pem\nopendistro_security.ssl.http.pemkey_filepath:
+      esnode-key.pem\nopendistro_security.ssl.http.pemtrustedcas_filepath: root-ca.pem\nopendistro_security.allow_unsafe_democertificates:
+      true\nopendistro_security.allow_default_init_securityindex: true\nopendistro_security.authcz.admin_dn:\n
+      \ - CN=kirk,OU=client,O=client,L=test, C=de      \n#opendistro_security.audit.type:
+      internal_elasticsearch\nopendistro_security.enable_snapshot_restore_privilege: true\nopendistro_security.check_snapshot_restore_write_privileges:
+      true\nopendistro_security.restapi.roles_enabled: [\"all_access\", \"security_rest_api_access\"]\ncluster.routing.allocation.disk.threshold_enabled:
+      false\nnode.max_local_storage_nodes: 3\nindices.fielddata.cache.size: 20%\nindices.breaker.total.use_real_memory:
+      false\nindices.breaker.fielddata.limit: 40%\nindices.breaker.request.limit: 50%\nindices.breaker.total.limit:
+      95%    "
+---
+# Source: amberdata-base/templates/elasticsearch/jvm-configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: jvm
+  namespace: default
+data:
+    jvm.options: "-Xms4g\n-Xmx4g\n8-13:-XX:+UseConcMarkSweepGC\n8-13:-XX:CMSInitiatingOccupancyFraction=75\n8-13:-XX:+UseCMSInitiatingOccupancyOnly\n14-:-XX:+UseG1GC\n14-:-XX:G1ReservePercent=25\n14-:-XX:InitiatingHeapOccupancyPercent=30\n-Djava.io.tmpdir=${ES_TMPDIR}\n-XX:+HeapDumpOnOutOfMemoryError\n-XX:HeapDumpPath=data\n-XX:ErrorFile=logs/hs_err_pid%p.log\n8:-XX:+PrintGCDetails\n8:-XX:+PrintGCDateStamps\n8:-XX:+PrintTenuringDistribution\n8:-XX:+PrintGCApplicationStoppedTime\n8:-Xloggc:logs/gc.log\n8:-XX:+UseGCLogFileRotation\n8:-XX:NumberOfGCLogFiles=32\n8:-XX:GCLogFileSize=64m\n9-:-Xlog:gc*,gc+age=trace,safepoint:file=logs/gc.log:utctime,pid,tags:filecount=32,filesize=64m\n-Dclk.tck=100\n-Djdk.attach.allowAttachSelf=true\n-Djava.security.policy=../plugins/analysis-hanlp/plugin-security.policy
+      \ "
+---
+# Source: amberdata-base/templates/kibana/kibana-configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kibana-config
+  labels:
+    app: kibana
+    release: kibana
+data:
+    kibana.yml: |-
+      server.name: kibana
+      server.host: "0"
+      server.basePath: "/kibana"
+      elasticsearch.hosts: http://elasticsearch.base.svc.cluster.local:9200
+      elasticsearch.ssl.verificationMode: none
+      elasticsearch.username: admin
+      elasticsearch.password: admin
+      elasticsearch.requestHeadersWhitelist: ["securitytenant","Authorization"]
+      opendistro_security.multitenancy.enabled: false
+      opendistro_security.multitenancy.tenants.preferred: ["Private", "Global"]
+      opendistro_security.readonly_mode.roles: ["kibana_read_only"]
+      newsfeed.enabled: false
+      telemetry.optIn: false
+      telemetry.enabled: false
+---
+# Source: amberdata-base/templates/mysql/mysql-configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mysql-configuration
+  namespace: default
+data:
+  my.cnf: "[mysqld]\ndefault-storage-engine = INNODB\nsymbolic-links = 0\nbind-address
+    = 0.0.0.0\nlower_case_table_names = 1\ncharacter_set_server = utf8\nskip-external-locking\nskip-name-resolve\nback_log
+    = 600\nmax_connections = 1000\nmax_connect_errors = 6000\nopen_files_limit = 65535\ntable_open_cache
+    = 128\nmax_allowed_packet = 4M\ninnodb_flush_method = O_DIRECT\ninnodb_lock_wait_timeout
+    = 1800\ninnodb_flush_log_at_trx_commit = 0\nsql_mode=STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION\n\n[mysql]\ndefault-character-set=utf8\n
+    \n[mysql.server]\ndefault-character-set=utf8"
+---
+# Source: amberdata-base/templates/nacos/nacos-configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nacos-configuration
+  namespace: default
+data:
+    custom.properties: |-
+      #spring.security.enabled=false
+      #management.security=false
+      #security.basic.enabled=false
+      #nacos.security.ignore.urls=/**
+      #management.metrics.export.elastic.host=http://localhost:9200
+      # metrics for prometheus
+      management.endpoints.web.exposure.include=*
+    
+      # metrics for elastic search
+      #management.metrics.export.elastic.enabled=false
+      #management.metrics.export.elastic.host=http://localhost:9200
+    
+      # metrics for influx
+      #management.metrics.export.influx.enabled=false
+      #management.metrics.export.influx.db=springboot
+      #management.metrics.export.influx.uri=http://localhost:8086
+      #management.metrics.export.influx.auto-create-db=true
+      #management.metrics.export.influx.consistency=one
+      #management.metrics.export.influx.compressed=true
+    
+      nacos.core.auth.enabled=true
+      nacos.core.auth.enable.userAgentAuthWhite=false
+      nacos.core.auth.server.identity.key=root
+      nacos.core.auth.server.identity.value=Dctm@1234
+---
+# Source: amberdata-base/templates/nginx/nginx-configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: conf
+  namespace: default
+data:
+    nginx.conf: "worker_processes  1;\n\nevents {\n    worker_connections  1024;\n}\n\n\nhttp
+      {\n\n        map $http_upgrade $connection_upgrade {\n    default upgrade;\n    ''
+      close;\n    }\n\n    include       mime.types;\n    default_type  application/octet-stream;\n
+      \                     \n\n    sendfile        on;\n    #tcp_nopush     on;\n\n    #keepalive_timeout
+      \ 0;\n      keepalive_timeout  6500;\n          client_body_buffer_size  1000m;\n
+      \         client_max_body_size  3000m;\n          proxy_headers_hash_max_size 51200;\n
+      \         proxy_headers_hash_bucket_size 6400;\n          client_header_buffer_size
+      10m;\n          large_client_header_buffers 4 5m;\n          proxy_http_version
+      1.1;\n\n   charset utf-8,gbk;\n    #gzip  on;  \n\n    server {\n        listen
+      \      80;\n        server_name  127.0.0.1;\n\n        charset utf-8,gbk;\n\n\n
+      \     location / {\n            root   /html;\n            index  index.html index.htm;\n
+      \     }\n\n      #cdn start\n      \n      location ~ ^/(ssologin|tdr|erms|admin|metadata|dm|platform|dataarchives|data|search|sgportal|teamwork)/assets/(.*){\n
+      \         proxy_pass   http://cdn.base.svc.cluster.local:30080/$1/assets/$2;\n          proxy_set_header
+      \ X-Real-IP  $remote_addr;\n          proxy_read_timeout 300;\n      }\n\n      location
+      /cdn/{\n          proxy_pass   http://cdn.base.svc.cluster.local:30080/;\n          proxy_set_header
+      \ X-Real-IP  $remote_addr;\n          proxy_read_timeout 300;\n      }\n      \n
+      \     #cdn end\n      \n      #frontend start\n      \n      #backend start\n\n
+      \     location /kibana {\n          proxy_pass        http://kibana.base.svc.cluster.local:5601/;\n
+      \         proxy_set_header  Host  $host:$server_port;\n          proxy_set_header
+      \ X-Real-IP  $remote_addr;\n          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\n
+      \         rewrite ^/kibana/(.*)$ /$1 break;\n      }\n\n      location /nacos/ {\n
+      \        proxy_pass        http://nacos.base.svc.cluster.local:8848/nacos/;\n         proxy_set_header
+      X-Real-IP $remote_addr;\n         proxy_read_timeout 300;\n      }\n      \n      #backend
+      end \n\n      error_page   500 502 503 504  /50x.html;\n      location = /50x.html
+      {\n          root   html;\n      }\n    }\n  }"
+---
+# Source: amberdata-base/templates/redis/health-configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  labels:
+    app: redis
+    chart: amberdata-base-1.0.0
+  name: health
+data:
+  ping_local.sh: |-
+    response=$(
+      redis-cli \
+        -a Dctm@1234 \
+        -h localhost \
+        -p 6379 \
+        ping
+    )
+    if [ "$response" != "PONG" ]; then
+      echo "$response"
+      exit 1
+    fi
+---
+# Source: amberdata-base/templates/cdn/cdn-pvc.yaml
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: cdn-data
+  namespace: default
+  labels:
+    app: cdn
+    chart: "amberdata-base-1.0.0"
+    release: "cdn"
+spec:
+  accessModes:
+    - "ReadWriteOnce"
+  resources:
+    requests:
+      storage: "5Gi"
+---
+# Source: amberdata-base/templates/broker/broker-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: broker
+  labels:
+    app: broker
+    chart: amberdata-base-1.0.0
+    release: broker
+spec:
+  type: ClusterIP
+  ports:
+    - name: brokerport
+      port: 10911
+      protocol: TCP
+      targetPort: 10911
+    - name: vipport
+      port: 10909
+      protocol: TCP
+      targetPort: 10909
+  selector:
+    app: broker
+    release: broker
+---
+# Source: amberdata-base/templates/cdn/cdn-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: cdn
+  labels:
+    app: cdn
+    chart: amberdata-base-1.0.0
+    release: cdn
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 30080
+      protocol: TCP
+      targetPort: 30080
+  selector:
+    app: cdn
+    release: cdn
+---
+# Source: amberdata-base/templates/elasticsearch/elasticsearch-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: elasticsearch
+  labels:
+    app: elasticsearch
+    chart: amberdata-base-1.0.0
+    release: elasticsearch
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 9200
+      protocol: TCP
+      targetPort: 9200
+    - name: transport
+      port: 9600
+      protocol: TCP
+      targetPort: 9600
+  selector:
+    app: elasticsearch
+    release: elasticsearch
+---
+# Source: amberdata-base/templates/kibana/kibana-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: kibana
+  labels:
+    app: kibana
+    chart: amberdata-base-1.0.0
+    release: kibana
+spec:
+  type: ClusterIP
+  ports:
+    - name: httpport
+      port: 5601
+      protocol: TCP
+      targetPort: 5601
+  selector:
+    app: kibana
+    release: kibana
+---
+# Source: amberdata-base/templates/minio/minio-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: minio
+  labels:
+    app: minio
+    chart: amberdata-base-1.0.0
+    release: minio
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 9000
+      protocol: TCP
+      targetPort: 9000
+  selector:
+    app: minio
+    release: minio
+---
+# Source: amberdata-base/templates/mysql/mysql-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql
+  labels:
+    app: mysql
+    chart: amberdata-base-1.0.0
+    release: mysql
+spec:
+  type: ClusterIP
+  ports:
+    - name: tcp
+      port: 3306
+      protocol: TCP
+      targetPort: 3306
+  selector:
+    app: mysql
+    release: mysql
+---
+# Source: amberdata-base/templates/nacos/nacos-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: nacos
+  labels:
+    app: nacos
+    chart: amberdata-base-1.0.0
+    release: nacos
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 8848
+      protocol: TCP
+      targetPort: 8848
+  selector:
+    app: nacos
+    release: nacos
+---
+# Source: amberdata-base/templates/namesrv/namesrv-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: namesrv
+  labels:
+    app: namesrv
+    chart: amberdata-base-1.0.0
+    release: namesrv
+spec:
+  type: ClusterIP
+  ports:
+    - name: namesrv
+      port: 9876
+      protocol: TCP
+      targetPort: 9876
+  selector:
+    app: namesrv
+    release: namesrv
+---
+# Source: amberdata-base/templates/nginx/nginx-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx
+  labels:
+    app: nginx
+    chart: amberdata-base-1.0.0
+    release: nginx
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 80
+      protocol: TCP
+      targetPort: 80
+  selector:
+    app: nginx
+    release: nginx
+---
+# Source: amberdata-base/templates/redis/redis-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  labels:
+    app: redis
+    chart: amberdata-base-1.0.0
+    release: redis
+spec:
+  type: ClusterIP
+  ports:
+    - name: dbport
+      port: 6379
+      protocol: TCP
+      targetPort: 6379
+  selector:
+    app: redis
+    release: redis
+---
+# Source: amberdata-base/templates/rocketmq-console/rocketmq-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: rocketmq
+  labels:
+    app: rocketmq
+    chart: amberdata-base-1.0.0
+    release: rocketmq
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 8081
+      protocol: TCP
+      targetPort: 8080
+  selector:
+    app: rocketmq
+    release: rocketmq
+---
+# Source: amberdata-base/templates/broker/broker-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: broker
+  namespace: default
+  labels:
+    app: broker
+    chart: amberdata-base-1.0.0
+    release: broker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: broker
+      release: broker
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: broker
+        release: broker
+    spec:
+      imagePullSecrets:
+        - name: dev
+      containers:
+        - name: broker
+          image: hzent.amberdata.cn:8082/rocketmq:5.0
+          imagePullPolicy: IfNotPresent
+          command:
+            - sh
+            - mqbroker
+          args:
+            - -c
+            - /opt/rocketmq/conf/broker.conf          
+          ports:
+            - name: vipport
+              containerPort: 10909
+              protocol: TCP
+            - name: broker
+              containerPort: 10911
+              protocol: TCP  
+          env:
+            - name: NAMESRV_ADDR
+              value: namesrv.base.svc.cluster.local:9876
+            - name: MAX_POSSIBLE_HEAP
+              value: "2000000000"   
+          resources:
+            null
+          volumeMounts:
+            - mountPath: /etc/localtime
+              readOnly: true
+              name: localtime
+            - mountPath: /root/logs
+              name: logs
+            - mountPath: /root/store
+              name: store
+            - mountPath: /opt/rocketmq/conf
+              name: broker-configuration
+      volumes:
+        - name: localtime
+          hostPath: 
+            path: /etc/localtime
+        - name: logs
+          hostPath:
+            path: /amberdata/data/broker/logs
+        - name: store
+          hostPath:
+            path: /amberdata/data/broker/store
+        - name: broker-configuration
+          configMap:
+            name: broker-configuration
+---
+# Source: amberdata-base/templates/cdn/cdn-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cdn
+  namespace: default
+  labels:
+    app: cdn
+    chart: amberdata-base-1.0.0
+    release: cdn
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cdn
+      release: cdn
+  strategy:
+    null
+  template:
+    metadata:
+      labels:
+        app: cdn
+        release: cdn
+    spec:
+      schedulerName: ""
+      imagePullSecrets:
+        - name: dev
+      priorityClassName: ""
+      securityContext:
+        fsGroup: 
+        runAsUser: 
+      serviceAccount: 
+      containers:
+        - name: cdn
+          image: hzent.amberdata.cn:8082/cdn_x86:1.0
+          imagePullPolicy: IfNotPresent
+          command:
+            null
+          ports:
+            - name: http
+              containerPort: 30080
+              protocol: TCP
+          env:
+            null
+          resources:
+            null
+          volumeMounts:
+            - mountPath: /etc/localtime
+              readOnly: true
+              name: localtime      
+            - mountPath: /www-data 
+              name: data
+      volumes:
+        - name: localtime
+          hostPath:
+            path: /etc/localtime
+        - name: data
+          persistentVolumeClaim:
+            claimName: cdn-data
+---
+# Source: amberdata-base/templates/kibana/kibana-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kibana
+  labels:
+    app: kibana
+    release: kibana
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: kibana
+      release: kibana
+  template:
+    metadata:
+      labels:
+        app: kibana
+        release: kibana
+    spec:
+      volumes:
+        - name: kibana-config
+          configMap:
+            name: kibana-config
+      affinity:
+        null
+      tolerations:
+        null
+      imagePullSecrets:
+        - name: dev
+      containers:
+        - name: kibana
+          image: hzent.amberdata.cn:8082/kibana:5.0
+          imagePullPolicy: IfNotPresent          
+          ports:
+            - name: httpport
+              containerPort: 5601
+              protocol: TCP
+          resources:
+            null
+          env:
+            - name: ELASTICSEARCH_HOSTS
+              value: http://elasticsearch.base.svc.cluster.local:9200   
+          readinessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            successThreshold: 3
+            timeoutSeconds: 5
+            exec:
+              command: 
+                - sh
+                - -c
+                - |
+                  #!/usr/bin/env bash -e
+                  http () {
+                      local path="${1}"
+                      set -- -XGET -s --fail
+  
+                      if [ -n "${ELASTIC_USERNAME}" ] && [ -n "${ELASTIC_PASSWORD}" ]; then
+                        set -- "$@" -u "${ELASTIC_USERNAME}:${ELASTIC_PASSWORD}"
+                      fi
+  
+                      curl -k "$@" "http://localhost:5601${path}"
+                  }
+    
+                  http "/app/kibana"
+          volumeMounts:
+            - name: kibana-config
+              mountPath: /usr/share/kibana/config/kibana.yml
+              subPath: kibana.yml
+---
+# Source: amberdata-base/templates/namesrv/namesrv-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: namesrv
+  namespace: default
+  labels:
+    app: namesrv
+    chart: amberdata-base-1.0.0
+    release: namesrv
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: namesrv
+      release: namesrv
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: namesrv
+        release: namesrv
+    spec:
+      imagePullSecrets:
+        - name: dev
+      containers:
+        - name: namesrv
+          image: hzent.amberdata.cn:8082/rocketmq:5.0
+          imagePullPolicy: IfNotPresent
+          command:
+            - sh
+            - mqnamesrv
+          ports:
+            - name: namesrv
+              containerPort: 9876
+              protocol: TCP     
+          env:
+            - name: MAX_POSSIBLE_HEAP
+              value: "1000000000"   
+          resources:
+            null
+          volumeMounts:
+            - mountPath: /etc/localtime
+              readOnly: true
+              name: localtime
+            - mountPath: /root/logs
+              name: logs
+            - mountPath: /root/store
+              name: store
+      volumes:
+        - name: localtime
+          hostPath: 
+            path: /etc/localtime
+        - name: logs
+          hostPath:
+            path: /amberdata/data/namesrv/logs
+        - name: store
+          hostPath:
+            path: /amberdata/data/namesrv/store
+---
+# Source: amberdata-base/templates/nginx/nginx-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx
+  namespace: default
+  labels:
+    app: nginx
+    chart: amberdata-base-1.0.0
+    release: nginx
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx
+      release: nginx
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: nginx
+        release: nginx
+    spec:
+      imagePullSecrets:
+        - name: dev
+      securityContext:
+        fsGroup: 
+        runAsUser: 
+      containers:
+        - name: nginx
+          image: hzent.amberdata.cn:8082/nginx:5.0
+          imagePullPolicy: IfNotPresent
+          command:
+            null
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+          livenessProbe:
+            tcpSocket: 
+              port: 80
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 1
+            successThreshold: 1
+            failureThreshold: 3
+          readinessProbe:
+            tcpSocket: 
+              port: 80
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 1
+            successThreshold: 1
+            failureThreshold: 6
+          env:
+            null
+          resources:
+            limits:
+              memory: 1Gi
+          volumeMounts:
+            - mountPath: /etc/localtime
+              readOnly: true
+              name: time
+            - mountPath: /etc/nginx/nginx.conf
+              subPath: nginx.conf
+              name: conf
+            - mountPath: /tmp
+              name: tmp
+            - mountPath: /amberdata/nginx/data 
+              name: data
+      volumes:
+        - name: data
+          hostPath:
+            path: /amberdata/base/nginx/data
+        - name: time
+          hostPath:
+            path: /etc/localtime
+        - name: tmp
+          hostPath:
+            path: /tmp        
+        - name: conf
+          configMap:
+            name: conf
+---
+# Source: amberdata-base/templates/rocketmq-console/rocketmq-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rocketmq
+  namespace: default
+  labels:
+    app: rocketmq
+    chart: amberdata-base-1.0.0
+    release: rocketmq
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rocketmq
+      release: rocketmq
+  strategy:
+    null
+  template:
+    metadata:
+      labels:
+        app: rocketmq
+        release: rocketmq
+    spec:
+      schedulerName: ""
+      imagePullSecrets:
+        - name: dev
+      containers:
+        - name: rocketmq
+          image: hzent.amberdata.cn:8082/rocketmq-console:5.0
+          imagePullPolicy: IfNotPresent
+          command:
+            - sh
+          args:
+            - -c
+            - java $JAVA_OPTS -jar /app.jar
+          ports:
+            - name: httpport
+              containerPort: 8080
+              protocol: TCP            
+          env:
+            - name: JAVA_OPTS
+              value: -Drocketmq.namesrv.addr=namesrv.base.svc.cluster.local:9876 -Dcom.rocketmq.sendMessageWithVIPChannel=false   
+          resources:
+            null
+          volumeMounts:
+            - mountPath: /etc/localtime
+              readOnly: true
+              name: localtime
+          lifecycle:
+            null
+      volumes:
+        - name: localtime
+          hostPath: 
+            path: /etc/localtime
+---
+# Source: amberdata-base/templates/elasticsearch/elasticsearch-statefulset.yaml
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: elasticsearch
+  namespace: default
+  labels:
+    app: elasticsearch
+    chart: amberdata-base-1.0.0
+    release: elasticsearch
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: elasticsearch
+      release: elasticsearch
+  serviceName: elasticsearch
+  updateStrategy:
+    type: OnDelete
+  template:
+    metadata:
+      labels:
+        app: elasticsearch
+        release: elasticsearch
+    spec:
+      imagePullSecrets:
+        - name: dev
+      initContainers:
+        - name: sysctl
+          image: hzent.amberdata.cn:8082/busybox:1.29.3
+          imagePullPolicy: "IfNotPresent"
+          command: ["sysctl", "-w", "vm.max_map_count=262144"]
+          securityContext:
+            privileged: true
+        - name: chmod
+          image: hzent.amberdata.cn:8082/busybox:1.29.3
+          imagePullPolicy: "IfNotPresent"
+          command: ["sh", "-c", "chmod -R 777 /usr/share/elasticsearch"]
+          volumeMounts:
+          - name: data
+            mountPath: /usr/share/elasticsearch/data         
+      containers:
+        - name: elasticsearch
+          image: hzent.amberdata.cn:8082/elasticsearch:5.0
+          imagePullPolicy: "IfNotPresent"
+          command:
+            null
+          ports:
+            - name: http
+              containerPort: 9200
+              protocol: TCP
+            - name: transport
+              containerPort: 9600
+              protocol: TCP
+          env:
+            - name: discovery.type
+              value: single-node
+          resources:
+            limits:
+              memory: 6Gi
+          volumeMounts:
+            - mountPath: /usr/share/elasticsearch/data 
+              name: data
+            - mountPath: /etc/localtime
+              readOnly: true
+              name: localtime
+            - mountPath: /usr/share/elasticsearch/config/jvm.options
+              subPath: jvm.options
+              name: jvm
+            - mountPath: /usr/share/elasticsearch/config/elasticsearch.yml
+              subPath: elasticsearch.yml
+              name: esconfig
+      volumes:
+        - name: localtime
+          hostPath:
+            path: /etc/localtime
+        - name: jvm
+          configMap:
+            name: jvm
+        - name: esconfig
+          configMap:
+            name: esconfig
+        - name: data
+          persistentVolumeClaim:
+            claimName: elasticsearch-data
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+        labels:
+          app: "elasticsearch"
+          release: "chart-1669270800"
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests: 
+            storage: "5Gi"
+---
+# Source: amberdata-base/templates/minio/minio-statefulset.yaml
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: minio
+  namespace: default
+  labels:
+    app: minio
+    chart: amberdata-base-1.0.0
+    release: minio
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: minio
+      release: minio
+  serviceName: minio
+  updateStrategy:
+    type: OnDelete
+  template:
+    metadata:
+      labels:
+        app: minio
+        release: minio
+    spec:
+      schedulerName: ""
+      imagePullSecrets:
+      priorityClassName: ""
+      securityContext:
+        fsGroup: 
+        runAsUser: 
+      containers:
+        - name: minio
+          image: hzent.amberdata.cn:8082/minio:5.0
+          imagePullPolicy: IfNotPresent
+          command:
+            - minio
+            - server
+            - /data
+          ports:
+            - name: http
+              containerPort: 9000
+              protocol: TCP
+          env:
+            - name: MINIO_ACCESS_KEY
+              value: admin
+            - name: MINIO_SECRET_KEY
+              value: Dctm@1234
+          resources:
+            limits:
+              memory: 2Gi
+          volumeMounts:
+            - mountPath: /data 
+              name: data
+            - mountPath: /etc/localtime
+              readOnly: true
+              name: localtime
+            - mountPath: /root/.minio
+              name: conf
+          lifecycle:
+            null
+      volumes:
+        - name: localtime
+          hostPath:
+            path: /etc/localtime
+        - name: conf
+          hostPath:
+            path: /amberdata/base/minio/config
+        - name: data
+          persistentVolumeClaim:
+            claimName: minio-data
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+        labels:
+          app: "minio"
+          release: "minio"
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests: 
+            storage: "5Gi"
+---
+# Source: amberdata-base/templates/mysql/mysql-statefulset.yaml
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mysql
+  namespace: default
+  labels:
+    app: mysql
+    chart: amberdata-base-1.0.0
+    release: mysql
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mysql
+      release: mysql
+  serviceName: mysql
+  updateStrategy:
+    type: OnDelete
+  template:
+    metadata:
+      labels:
+        app: mysql
+        release: mysql
+    spec:
+      imagePullSecrets:
+        - name: dev
+      priorityClassName: ""
+      securityContext:
+        fsGroup: 
+        runAsUser: 
+      containers:
+        - name: mysql
+          image: hzent.amberdata.cn:8082/mysql:5.7.40
+          imagePullPolicy: IfNotPresent
+          command:
+            null
+          ports:
+            - name: tcp
+              containerPort: 3306
+              protocol: TCP
+          livenessProbe:
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            successThreshold: 1
+            failureThreshold: 3
+            exec:
+              command:
+              - /bin/bash
+              - -c
+              - "mysqladmin ping -u root -h 127.0.0.1 -p${MYSQL_ROOT_PASSWORD}"
+          readinessProbe:
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 1
+            successThreshold: 1
+            failureThreshold: 3
+            exec:
+              command:
+              - /bin/bash
+              - -c
+              - "mysqladmin ping -u root -h 127.0.0.1 -p${MYSQL_ROOT_PASSWORD}"  
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              value: Dctm@1234
+            - name: MYSQL_USER
+              value: admin
+            - name: MYSQL_PASSWORD
+              value: Dctm@1234
+          resources:
+            limits:
+              cpu: 2000m
+              memory: 2Gi
+            requests:
+              cpu: 500m
+              memory: 500Mi
+          volumeMounts:
+            - mountPath: /etc/localtime
+              readOnly: true
+              name: localtime
+            - mountPath: /etc/mysql/mysql.conf.d
+              name: mysql-configuration  
+            - mountPath: /var/lib/mysql 
+              name: data                 
+          lifecycle:
+            null
+      volumes:
+        - name: localtime
+          hostPath:
+            path: /etc/localtime
+        - name: mysql-configuration
+          configMap:
+            name: mysql-configuration
+        - name: data
+          persistentVolumeClaim:
+            claimName: mysql-data
+  volumeClaimTemplates:
+    - metadata:
+        name: data  
+        labels:
+          app: "mysql"
+          release: "chart-1669270800"
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests: 
+            storage: "5Gi"
+---
+# Source: amberdata-base/templates/nacos/nacos-statefulset.yaml
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: nacos
+  namespace: default
+  labels:
+    app: nacos
+    chart: amberdata-base-1.0.0
+    release: nacos
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nacos
+      release: nacos
+  serviceName: nacos
+  updateStrategy:
+    type: OnDelete
+  template:
+    metadata:
+      labels:
+        app: nacos
+        release: nacos
+    spec:
+      imagePullSecrets:
+        - name: dev
+      securityContext:
+        fsGroup: 
+        runAsUser: 
+      containers:
+        - name: nacos
+          image: hzent.amberdata.cn:8082/nacos:2.0
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: MODE
+              value: standalone
+            - name: BASE_DIR
+              value: /home/nacos
+            - name: JVM_XMS
+              value: 1g
+            - name: JVM_XMX
+              value: 1g
+            - name: JVM_XMN
+              value: 512m
+            - name: JVM_MS
+              value: 128m
+            - name: JVM_MMS
+              value: 320m
+          ports:
+            - name: http
+              containerPort: 8848
+              protocol: TCP
+          livenessProbe:
+            tcpSocket: 
+              port: 8848
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 1
+            successThreshold: 1
+            failureThreshold: 3
+          readinessProbe:
+            tcpSocket: 
+              port: 8848
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 1
+            successThreshold: 1
+            failureThreshold: 6
+          resources:
+            limits:
+              memory: 2Gi
+          volumeMounts:
+            - mountPath: /etc/localtime
+              readOnly: true
+              name: localtime 
+            - mountPath: /home/nacos/data 
+              name: data        
+            - mountPath: /home/nacos/logs 
+              name: logs
+            - mountPath: /home/nacos/init.d
+              name: nacos-configuration            
+          lifecycle:
+            null
+      volumes:
+        - name: localtime
+          hostPath:
+            path: /etc/localtime
+        - name: logs
+          hostPath:
+            path: /amberdata/nacos/logs   
+        - name: nacos-configuration
+          configMap:
+            name: nacos-configuration
+        - name: data
+          persistentVolumeClaim:
+            claimName: data 
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+        labels:
+          app: "nacos"
+          release: "nacos"
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests: 
+            storage: "5Gi"
+---
+# Source: amberdata-base/templates/redis/redis-statefulset.yaml
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: redis
+  namespace: default
+  labels:
+    app: redis
+    chart: amberdata-base-1.0.0
+    release: redis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+      release: redis
+  serviceName: redis
+  updateStrategy:
+    type: OnDelete
+  template:
+    metadata:
+      labels:
+        app: redis
+        release: redis
+    spec:
+      imagePullSecrets:
+        - name: dev
+      securityContext:
+        fsGroup: 
+        runAsUser: 
+      containers:
+        - name: redis
+          image: hzent.amberdata.cn:8082/redis:5.0
+          imagePullPolicy: IfNotPresent
+          command:
+            - redis-server
+            - --appendonly "yes"
+            - --requirepass "Dctm@1234"
+          ports:
+            - name: dbport
+              containerPort: 6379
+              protocol: TCP
+          livenessProbe:
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 5
+            successThreshold: 1
+            failureThreshold: 5
+            exec:
+              command:
+              - sh
+              - -c
+              - /health/ping_local.sh
+          readinessProbe:
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 1
+            successThreshold: 1
+            failureThreshold: 5
+            exec:
+              command:
+              - sh
+              - -c
+              - /health/ping_local.sh
+          env:
+            null
+          resources:
+            limits:
+              cpu: 2000m
+              memory: 2Gi
+          volumeMounts:
+            - mountPath: /etc/localtime
+              readOnly: true
+              name: localtime
+            - mountPath: /health
+              name: health  
+            - mountPath: /data 
+              name: data 
+          lifecycle:
+            null
+      volumes:
+        - name: localtime
+          hostPath:
+            path: /etc/localtime
+        - name: health
+          configMap:
+            defaultMode: 493
+            name: health
+        - name: data  
+          persistentVolumeClaim:
+            claimName: redis-data
+  volumeClaimTemplates:
+    - metadata:
+        name: data  
+        labels:
+          app: "redis"
+          release: "redis"
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests: 
+            storage: "5Gi"

@@ -1,0 +1,151 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ template "elasticsearch.name" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ template "elasticsearch.name" . }}
+    chart: {{ template "elasticsearch.chart" . }}
+    release: {{ template "elasticsearch.name" . }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ template "elasticsearch.name" . }}
+      release: {{ template "elasticsearch.name" . }}
+  serviceName: {{ template "elasticsearch.name" . }}
+  updateStrategy:
+    type: {{ .Values.updateStrategy.type }}
+    {{- if .Values.rollingUpdatePartition }}
+    {{- if (eq "Recreate" .Values.updateStrategy) }}
+    rollingUpdate: null
+    {{- else }}
+    rollingUpdate:
+      partition: {{ .Values.rollingUpdatePartition }}
+    {{- end }}
+    {{- end }}
+  template:
+    metadata:
+      labels:
+        app: {{ template "elasticsearch.name" . }}
+        release: {{ template "elasticsearch.name" . }}
+{{- with .Values.podLabels }}
+{{ toYaml . | indent 8 }}
+{{- end }}
+{{- with .Values.podAnnotations }}
+      annotations:
+{{ toYaml . | indent 8 }}
+{{- end }}
+    spec:
+      {{- if .Values.elasticsearch.schedulerName }}
+      schedulerName: "{{ .Values.elasticsearch.schedulerName }}"
+      {{- end }}
+      {{- if .Values.elasticsearch.image.imagePullSecrets }}
+      imagePullSecrets:
+{{ toYaml .Values.elasticsearch.image.imagePullSecrets | indent 8 }}
+      {{- end }}
+      {{- if .Values.elasticsearch.priorityClassName }}
+      priorityClassName: "{{ .Values.elasticsearch.priorityClassName }}"
+      {{- end }}
+      {{- if .Values.elasticsearch.securityContext.enabled }}
+      securityContext:
+        fsGroup: {{ .Values.elasticsearch.securityContext.fsGroup }}
+        runAsUser: {{ .Values.elasticsearch.securityContext.runAsUser }}
+      {{- end }}
+      {{- if .Values.elasticsearch.serviceAccount.enabled }}
+      serviceAccount: {{ .Values.elasticsearch.serviceAccount.name }}
+      {{- end }}
+      initContainers:
+        - name: sysctl
+          image: {{ .Values.elasticsearch.initImage.repository }}:{{ .Values.elasticsearch.initImage.tag }}
+          imagePullPolicy: {{ .Values.elasticsearch.image.imagePullPolicy | quote }}
+          command: ["sysctl", "-w", "vm.max_map_count=262144","net.ipv4.tcp_keepalive_time=600"]
+          securityContext:
+            privileged: true
+        - name: chmod
+          image: {{ .Values.elasticsearch.chmodImage.repository }}:{{ .Values.elasticsearch.chmodImage.tag }}
+          imagePullPolicy: {{ .Values.elasticsearch.image.imagePullPolicy | quote }}
+          command: ["sh", "-c", "chmod -R 777 /usr/share/elasticsearch"]
+          volumeMounts:
+          - name: data
+            mountPath: /usr/share/elasticsearch/data         
+      containers:
+        - name: elasticsearch
+          image: {{ .Values.elasticsearch.image.repository}}:{{ .Values.elasticsearch.image.tag }}
+          imagePullPolicy: {{ .Values.elasticsearch.image.imagePullPolicy | quote }}
+          command: 
+            {{- toYaml .Values.command | nindent 12 }}
+          ports:
+            - name: http
+              containerPort: 9200
+              protocol: TCP
+            - name: transport
+              containerPort: 9600
+              protocol: TCP
+          env:
+{{ toYaml .Values.elasticsearch.env | indent 12 }}
+          resources:
+            {{- toYaml .Values.elasticsearch.resources | nindent 12 }}
+          volumeMounts:
+            - mountPath: {{ .Values.elasticsearch.persistence.mountPath }} 
+              name: data
+            - mountPath: {{ .Values.elasticsearch.volumes.localtimecontainerPath }}
+              readOnly: {{ .Values.elasticsearch.volumes.readOnlyType }}
+              name: {{ .Values.elasticsearch.volumes.localtimevolumeName }}
+            - mountPath: {{ .Values.elasticsearch.volumes.jvmcontainerPath }}
+              subPath: {{ .Values.elasticsearch.volumes.jvmsubPath }}
+              name: {{ .Values.elasticsearch.volumes.jvmvolumeName }}
+            - mountPath: {{ .Values.elasticsearch.volumes.configcontainerPath }}
+              subPath: {{ .Values.elasticsearch.volumes.configsubPath }}
+              name: {{ .Values.elasticsearch.volumes.configvolumeName }}             
+            {{- range $key, $value := .Values.elasticsearch.secretMounts }}
+            - name: {{ $key }}
+              mountPath: {{ $value.elasticsearch.mountPath }}
+            {{- end }}
+          {{- if .Values.elasticsearch.securityContext.enabled }}
+          lifecycle: 
+          {{- toYaml .elasticsearch.Values.lifecycle | nindent 12 }}
+          {{- end }}
+        {{- with .Values.elasticsearch.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.elasticsearch.affinity }}
+      affinity:
+        {{ toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.elasticsearch.tolerations }}
+      tolerations:
+        {{ toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+        - name: {{ .Values.elasticsearch.volumes.localtimevolumeName }}
+          hostPath:
+            path: {{ .Values.elasticsearch.volumes.localtimehostPath }}
+        - name: {{ .Values.elasticsearch.volumes.jvmvolumeName }}
+          configMap:
+            name: {{ .Values.elasticsearch.volumes.jvmvolumeName }}
+        - name: {{ .Values.elasticsearch.volumes.configvolumeName }}
+          configMap:
+            name: {{ .Values.elasticsearch.volumes.configvolumeName }}
+        - name: data
+        {{- if .Values.elasticsearch.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ .Values.elasticsearch.persistence.claimName }}      
+      {{- else }}
+        emptyDir: {}
+      {{- end -}}
+      {{- if .Values.elasticsearch.extraVolumes }}
+{{ tpl .Values.elasticsearch.extraVolumes . | indent 6 }}
+      {{- end }}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+        labels:
+          app: "{{ template "elasticsearch.name" . }}"
+          release: {{ .Release.Name | quote }}
+      spec:
+        accessModes: [{{ .Values.elasticsearch.persistence.accessModes | quote }}]
+        resources:
+          requests: 
+            storage: {{ .Values.elasticsearch.persistence.size | quote }}

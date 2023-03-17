@@ -1,0 +1,948 @@
+replicaCount: 1
+
+podDisruptionBudget: |
+  maxUnavailable: 1
+
+terminationGracePeriodSeconds: 30
+
+updateStrategy:
+  type: OnDelete
+
+elasticsearch:
+  nameOverride: "elasticsearch"
+  initImage:
+    repository: hzent.amberdata.cn:8082/busybox
+    tag: "1.29.3"
+    pullPolicy: "IfNotPresent"
+  chmodImage:
+    repository: hzent.amberdata.cn:8082/busybox
+    tag: "1.29.3"
+    pullPolicy: "IfNotPresent"
+  image:
+    repository: hzent.amberdata.cn:8082/elasticsearch
+    tag: "5.0"
+    imagePullPolicy: IfNotPresent
+    imagePullSecrets: 
+      - name: dev 
+  env: 
+    - name: discovery.type
+      value: "single-node"
+  service:
+    name: elasticsearch
+    type: ClusterIP
+    loadBalancerIP: ""
+    ports:
+      http:
+        targetPort: 9200
+        port: 9200
+        protocol: TCP
+      transport:
+        targetPort: 9600
+        port: 9600
+        protocol: TCP      
+  resources: 
+    limits:
+      memory: "6Gi"  
+  volumes:
+    localtimecontainerPath: /etc/localtime
+    localtimevolumeName: localtime
+    localtimehostPath: /etc/localtime
+    readOnlyType: true
+    jvmcontainerPath: /usr/share/elasticsearch/config/jvm.options
+    jvmsubPath: jvm.options
+    jvmvolumeName: jvm
+    configcontainerPath: /usr/share/elasticsearch/config/elasticsearch.yml
+    configsubPath: elasticsearch.yml
+    configvolumeName: esconfig  
+  ## Persist data to a persistent volume
+  persistence:
+    enabled: true
+    existingClaim: ""
+    claimName: elasticsearch-data
+    mountPath: /usr/share/elasticsearch/data
+    accessModes:  "ReadWriteOnce"
+    size: 5Gi
+  esConfigPath: /usr/share/elasticsearch/config/
+  # such as elasticsearch.yml and log4j2.properties  
+  esConfig: 
+    elasticsearch.yml: |-
+      cluster.name: "shengzhou-cluster"
+      network.host: 0.0.0.0
+      opendistro_security.ssl.transport.pemcert_filepath: esnode.pem
+      opendistro_security.ssl.transport.pemkey_filepath: esnode-key.pem
+      opendistro_security.ssl.transport.pemtrustedcas_filepath: root-ca.pem
+      opendistro_security.ssl.transport.enforce_hostname_verification: false
+      opendistro_security.ssl.http.enabled: false
+      opendistro_security.ssl.http.pemcert_filepath: esnode.pem
+      opendistro_security.ssl.http.pemkey_filepath: esnode-key.pem
+      opendistro_security.ssl.http.pemtrustedcas_filepath: root-ca.pem
+      opendistro_security.allow_unsafe_democertificates: true
+      opendistro_security.allow_default_init_securityindex: true
+      opendistro_security.authcz.admin_dn:
+        - CN=kirk,OU=client,O=client,L=test, C=de      
+      #opendistro_security.audit.type: internal_elasticsearch
+      opendistro_security.enable_snapshot_restore_privilege: true
+      opendistro_security.check_snapshot_restore_write_privileges: true
+      opendistro_security.restapi.roles_enabled: ["all_access", "security_rest_api_access"]
+      cluster.routing.allocation.disk.threshold_enabled: false
+      node.max_local_storage_nodes: 3
+      indices.fielddata.cache.size: 20%
+      indices.breaker.total.use_real_memory: false
+      indices.breaker.fielddata.limit: 40%
+      indices.breaker.request.limit: 50%
+      indices.breaker.total.limit: 95%    
+  # Custom elasticsearch configuration files path
+  configurationFilesPath: /usr/share/elasticsearch/config  
+  # Custom elasticsearch configuration files used to override default mysql settings
+  configurationFiles:
+    jvm.options: |-
+      -Xms4g
+      -Xmx4g
+      8-13:-XX:+UseConcMarkSweepGC
+      8-13:-XX:CMSInitiatingOccupancyFraction=75
+      8-13:-XX:+UseCMSInitiatingOccupancyOnly
+      14-:-XX:+UseG1GC
+      14-:-XX:G1ReservePercent=25
+      14-:-XX:InitiatingHeapOccupancyPercent=30
+      -Djava.io.tmpdir=${ES_TMPDIR}
+      -XX:+HeapDumpOnOutOfMemoryError
+      -XX:HeapDumpPath=data
+      -XX:ErrorFile=logs/hs_err_pid%p.log
+      8:-XX:+PrintGCDetails
+      8:-XX:+PrintGCDateStamps
+      8:-XX:+PrintTenuringDistribution
+      8:-XX:+PrintGCApplicationStoppedTime
+      8:-Xloggc:logs/gc.log
+      8:-XX:+UseGCLogFileRotation
+      8:-XX:NumberOfGCLogFiles=32
+      8:-XX:GCLogFileSize=64m
+      9-:-Xlog:gc*,gc+age=trace,safepoint:file=logs/gc.log:utctime,pid,tags:filecount=32,filesize=64m
+      -Dclk.tck=100
+      -Djdk.attach.allowAttachSelf=true
+      -Djava.security.policy=../plugins/analysis-hanlp/plugin-security.policy  
+  affinity: {}
+    # podAntiAffinity:
+    #   requiredDuringSchedulingIgnoredDuringExecution:
+    #     labelSelector:
+    #       matchExpressions:
+    #       - key: app
+    #         operator: In
+    #         values:
+    #         - ermspai
+    #     topologyKey: kubernetes.io/hostname
+  securityContext: {}
+  serviceAccount: 
+    enabled: false
+    name: nfs-client-provisioner
+  secretMounts: {}
+
+kibana:
+  nameOverride: "kibana"
+  updateStrategy:
+    type: "Recreate"
+  replicas: 1
+  maxUnavailable: 1
+  extraEnvs: []
+  secretMounts: []
+  image:
+    repository: "hzent.amberdata.cn:8082/kibana"
+    imageTag: "5.0"
+    imagePullPolicy: "IfNotPresent"
+    imagePullSecrets: 
+      - name: dev
+  env: 
+    - name: ELASTICSEARCH_HOSTS
+      value: "http://elasticsearch.base.svc.cluster.local:9200"
+  service:
+    name: kibana
+    type: ClusterIP
+    loadBalancerIP: ""
+    ports:
+      httpport:
+        targetPort: 5601
+        port: 5601
+        protocol: TCP
+  readinessProbe:
+    failureThreshold: 3
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    successThreshold: 3
+    timeoutSeconds: 5
+  healthCheckPath: "/app/kibana"
+  kibanaConfig: 
+    kibana.yml: |-
+      server.name: kibana
+      server.host: "0"
+      server.basePath: "/kibana"
+      elasticsearch.hosts: http://elasticsearch.base.svc.cluster.local:9200
+      elasticsearch.ssl.verificationMode: none
+      elasticsearch.username: admin
+      elasticsearch.password: admin
+      elasticsearch.requestHeadersWhitelist: ["securitytenant","Authorization"]
+      opendistro_security.multitenancy.enabled: false
+      opendistro_security.multitenancy.tenants.preferred: ["Private", "Global"]
+      opendistro_security.readonly_mode.roles: ["kibana_read_only"]
+      newsfeed.enabled: false
+      telemetry.optIn: false
+      telemetry.enabled: false
+  serviceAccount: ""
+  antiAffinity: "hard"
+
+
+broker:
+  nameOverride: "broker"
+  strategy: 
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1 
+  replicaCount: 1
+  image:
+    repository: hzent.amberdata.cn:8082/rocketmq
+    tag: "5.0"
+    imagePullPolicy: IfNotPresent
+    imagePullSecrets: 
+      - name: dev
+  env: 
+    - name: NAMESRV_ADDR
+      value: "namesrv.base.svc.cluster.local:9876"
+    - name: MAX_POSSIBLE_HEAP
+      value: "2000000000"  
+  command:
+    - sh
+    - mqbroker
+  args:
+    - -c
+    - /opt/rocketmq/conf/broker.conf    
+  service:
+    name: broker
+    type: ClusterIP
+    loadBalancerIP: ""
+    ports:
+      vipport:
+        targetPort: 10909
+        port: 10909
+        protocol: TCP
+      brokerport:
+        targetPort: 10911
+        port: 10911
+        protocol: TCP    
+  volumes:
+    timecontainerPath: /etc/localtime
+    timevolumeName: localtime
+    timehostPath: /etc/localtime
+    readOnlyType: true
+    logscontainerPath: /root/logs
+    logsvolumeName: logs
+    logshostPath: /amberdata/data/broker/logs
+    storecontainerPath: /root/store
+    storevolumeName: store
+    storehostPath: /amberdata/data/broker/store
+    confcontainerPath: /opt/rocketmq/conf
+    confvolumeName: broker-configuration
+  securityContext: {}  
+  secretMounts: {}  
+  # Custom broker configuration files path
+  configurationFilesPath: /opt/rocketmq/conf
+  # Custom broker configuration files used to override default mysql settings
+  configurationFiles:
+    broker.conf: |-
+      brokerClusterName = DefaultCluster
+      brokerName = broker-a
+      brokerId = 0
+      deleteWhen = 04
+      fileReservedTime = 48
+      brokerRole = ASYNC_MASTER
+      flushDiskType = ASYNC_FLUSH
+      brokerIP1 = broker.base.svc.cluster.local
+  priorityClassName: ""  
+  tolerations: []
+  affinity: {}
+    # podAntiAffinity:
+    #   requiredDuringSchedulingIgnoredDuringExecution:
+    #     labelSelector:
+    #       matchExpressions:
+    #       - key: app
+    #         operator: In
+    #         values:
+    #         - ermspai
+    #     topologyKey: kubernetes.io/hostname
+
+
+namesrv:
+  nameOverride: "namesrv"
+  strategy: 
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+  replicaCount: 1
+  image:
+    repository: hzent.amberdata.cn:8082/rocketmq
+    tag: "5.0"
+    imagePullPolicy: IfNotPresent
+    imagePullSecrets: 
+      - name: dev
+  env: 
+    - name: MAX_POSSIBLE_HEAP
+      value: "1000000000"
+  command:
+    - sh
+    - mqnamesrv
+  service:
+    name: namesrv
+    type: ClusterIP
+    loadBalancerIP: ""
+    ports:
+      namesrv:
+        targetPort: 9876
+        port: 9876
+        protocol: TCP
+  volumes:
+    timecontainerPath: /etc/localtime
+    timevolumeName: localtime
+    timehostPath: /etc/localtime
+    readOnlyType: true
+    logscontainerPath: /root/logs
+    logsvolumeName: logs
+    logshostPath: /amberdata/data/namesrv/logs
+    storecontainerPath: /root/store
+    storevolumeName: store
+    storehostPath: /amberdata/data/namesrv/store
+  securityContext: {}  
+  secretMounts: {}
+  priorityClassName: ""  
+  tolerations: []
+  affinity: {}
+    # podAntiAffinity:
+    #   requiredDuringSchedulingIgnoredDuringExecution:
+    #     labelSelector:
+    #       matchExpressions:
+    #       - key: app
+    #         operator: In
+    #         values:
+    #         - ermspai
+    #     topologyKey: kubernetes.io/hostname
+
+
+rocketmq:
+  nameOverride: "rocketmq"
+  strategy: 
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+  replicaCount: 1
+  image:
+    repository: hzent.amberdata.cn:8082/rocketmq-console
+    tag: "5.0"
+    imagePullPolicy: IfNotPresent
+    imagePullSecrets: 
+      - name: dev
+  env: 
+    - name: JAVA_OPTS
+      value: "-Drocketmq.namesrv.addr=namesrv.base.svc.cluster.local:9876 -Dcom.rocketmq.sendMessageWithVIPChannel=false"
+  command:
+    - sh
+  args:
+    - -c
+    - java $JAVA_OPTS -jar /app.jar    
+  service:
+    name: rocketmq
+    type: ClusterIP
+    loadBalancerIP: ""
+    ports:
+      http:
+        targetPort: 8080
+        port: 8081
+        protocol: TCP
+  volumes:
+    timecontainerPath: /etc/localtime
+    timevolumeName: localtime
+    timehostPath: /etc/localtime
+    readOnlyType: true
+  securityContext: {} 
+  secretMounts: {}
+  priorityClassName: ""  
+  tolerations: []
+  affinity: {}
+    # podAntiAffinity:
+    #   requiredDuringSchedulingIgnoredDuringExecution:
+    #     labelSelector:
+    #       matchExpressions:
+    #       - key: app
+    #         operator: In
+    #         values:
+    #         - ermspai
+    #     topologyKey: kubernetes.io/hostname
+
+
+mysql:
+  nameOverride: "mysql"
+  image:
+    repository: hzent.amberdata.cn:8082/mysql
+    tag: "5.7.40"
+    imagePullPolicy: IfNotPresent
+    imagePullSecrets: 
+      - name: dev
+  env: 
+    - name: MYSQL_ROOT_PASSWORD
+      value: "Dctm@1234"
+    - name: MYSQL_USER
+      value: "admin"
+    - name: MYSQL_PASSWORD
+      value: "Dctm@1234" 
+  service:
+    name: mysql
+    type: ClusterIP
+    loadBalancerIP: ""
+    ports:
+      tcp:
+        targetPort: 3306
+        port: 3306
+        protocol: TCP
+  resources: 
+    limits:
+      cpu: "2000m"
+      memory: "2Gi" 
+    requests:
+      cpu: "500m" 
+      memory: "500Mi"      
+  livenessProbe:
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    successThreshold: 1
+    failureThreshold: 3
+  readinessProbe:
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 1
+    successThreshold: 1
+    failureThreshold: 3
+  volumes:
+    confcontainerPath: /etc/mysql/mysql.conf.d
+    confvolumeName: mysql-configuration
+    datacontainerPath: /var/lib/mysql 
+    datavolumeName: data
+    timecontainerPath: /etc/localtime
+    timevolumeName: localtime
+    timehostPath: /etc/localtime
+    readOnlyType: true
+  persistence:
+    enabled: true
+    existingClaim: ""
+    claimName: mysql-data
+    mountPath: /amberdata/base/mysql/data
+    accessModes: "ReadWriteOnce" 
+    size: 5Gi
+  serviceAccount: 
+    enabled: false
+    name: nfs-client-provisioner
+  securityContext: {}
+  fsGroup: 
+  runAsUser: 
+  secretMounts: []
+  priorityClassName: ""  
+  tolerations: []
+  affinity: {}
+    # podAntiAffinity:
+    #   requiredDuringSchedulingIgnoredDuringExecution:
+    #     labelSelector:
+    #       matchExpressions:
+    #       - key: app
+    #         operator: In
+    #         values:
+    #         - ermspai
+    #     topologyKey: kubernetes.io/hostname
+  configurationFiles:
+    my.cnf: |-
+      [mysqld]
+      default-storage-engine = INNODB
+      symbolic-links = 0
+      bind-address = 0.0.0.0
+      lower_case_table_names = 1
+      character_set_server = utf8
+      skip-external-locking
+      skip-name-resolve
+      back_log = 600
+      max_connections = 1000
+      max_connect_errors = 6000
+      open_files_limit = 65535
+      table_open_cache = 128
+      max_allowed_packet = 4M
+      innodb_flush_method = O_DIRECT
+      innodb_lock_wait_timeout = 1800
+      innodb_flush_log_at_trx_commit = 0
+      sql_mode=STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION
+      
+      [mysql]
+      default-character-set=utf8
+       
+      [mysql.server]
+      default-character-set=utf8
+
+
+redis:
+  nameOverride: "redis"
+  image:
+    repository: hzent.amberdata.cn:8082/redis
+    tag: "5.0"
+    imagePullPolicy: IfNotPresent
+    imagePullSecrets: 
+      - name: dev
+  command:
+    - redis-server
+    - --appendonly "yes"
+    - --requirepass "Dctm@1234"  
+  livenessProbe: 
+    enabled: true
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    timeoutSeconds: 5
+    successThreshold: 1
+    failureThreshold: 5  
+  readinessProbe: 
+    enabled: true
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    timeoutSeconds: 1
+    successThreshold: 1
+    failureThreshold: 5
+  service:
+    name: redis
+    type: ClusterIP
+    loadBalancerIP: ""
+    ports:
+      dbport:
+        targetPort: 6379
+        port: 6379
+        protocol: TCP
+  resources:
+    limits:
+      cpu: "2000m"
+      memory: "2Gi"
+  volumes:
+    timecontainerPath: /etc/localtime
+    timevolumeName: localtime
+    timehostPath: /etc/localtime
+    readOnlyType: true
+    chmodValue: 0755
+    datacontainerPath: /data
+    datavolumeName: data
+    confcontainerPath: /health
+    confvolumeName: health
+  persistence:
+    enabled: true
+    existingClaim: ""
+    claimName: redis-data
+    mountPath: /amberdata/redis/data
+    accessModes: "ReadWriteOnce" 
+    size: 5Gi
+  securityContext: {}
+  fsGroup: 
+  runAsUser: 
+  secretMounts: []
+  priorityClassName: ""  
+  tolerations: []
+  affinity: {}
+    # podAntiAffinity:
+    #   requiredDuringSchedulingIgnoredDuringExecution:
+    #     labelSelector:
+    #       matchExpressions:
+    #       - key: app
+    #         operator: In
+    #         values:
+    #         - ermspai
+    #     topologyKey: kubernetes.io/hostname
+
+
+nacos:
+  nameOverride: "nacos"
+  image:
+    repository: hzent.amberdata.cn:8082/nacos
+    tag: "2.0"
+    imagePullPolicy: IfNotPresent
+    imagePullSecrets: 
+      - name: dev
+  env: 
+    - name: MODE
+      value: "standalone"
+    - name: BASE_DIR
+      value: "/home/nacos"
+    - name: JVM_XMS
+      value: "1g"
+    - name: JVM_XMX
+      value: "1g"
+    - name: JVM_XMN
+      value: "512m"
+    - name: JVM_MS
+      value: "128m"
+    - name: JVM_MMS
+      value: "320m" 
+  service:
+    name: nacos
+    type: ClusterIP
+    loadBalancerIP: ""
+    ports:
+      http:
+        targetPort: 8848
+        port: 8848
+        protocol: TCP
+  resources: 
+    limits:
+      memory: "2Gi"
+  livenessProbe:
+    enabled: true
+    initialDelaySeconds: 10
+    timeoutSeconds: 1
+    periodSeconds: 10
+    successThreshold: 1
+    failureThreshold: 3
+  readinessProbe:
+    enabled: true
+    initialDelaySeconds: 10
+    timeoutSeconds: 1
+    periodSeconds: 10
+    successThreshold: 1
+    failureThreshold: 6
+  volumes:
+    timecontainerPath: /etc/localtime
+    timevolumeName: localtime
+    timehostPath: /etc/localtime
+    readOnlyType: true
+    logscontainerPath: /home/nacos/logs
+    logsvolumeName: logs
+    logshostPath: /amberdata/nacos/logs
+    datacontainerPath: /home/nacos/data
+    datavolumeName: data
+    confcontainerPath: /home/nacos/init.d
+    confvolumeName: nacos-configuration
+  persistence:
+    enabled: true
+    existingClaim: ""
+    claimName: data
+    accessModes:  "ReadWriteOnce"
+    size: 5Gi
+  securityContext: {}  
+  secretMounts: {}  
+  configurationFilesPath: /home/nacos/init.d
+  configurationFiles:
+    custom.properties: |-
+      #spring.security.enabled=false
+      #management.security=false
+      #security.basic.enabled=false
+      #nacos.security.ignore.urls=/**
+      #management.metrics.export.elastic.host=http://localhost:9200
+      # metrics for prometheus
+      management.endpoints.web.exposure.include=*
+      
+      # metrics for elastic search
+      #management.metrics.export.elastic.enabled=false
+      #management.metrics.export.elastic.host=http://localhost:9200
+      
+      # metrics for influx
+      #management.metrics.export.influx.enabled=false
+      #management.metrics.export.influx.db=springboot
+      #management.metrics.export.influx.uri=http://localhost:8086
+      #management.metrics.export.influx.auto-create-db=true
+      #management.metrics.export.influx.consistency=one
+      #management.metrics.export.influx.compressed=true
+      
+      nacos.core.auth.enabled=true
+      nacos.core.auth.enable.userAgentAuthWhite=false
+      nacos.core.auth.server.identity.key=root
+      nacos.core.auth.server.identity.value=Dctm@1234
+  priorityClassName: ""  
+  tolerations: []
+  affinity: {}
+    # podAntiAffinity:
+    #   requiredDuringSchedulingIgnoredDuringExecution:
+    #     labelSelector:
+    #       matchExpressions:
+    #       - key: app
+    #         operator: In
+    #         values:
+    #         - ermspai
+    #     topologyKey: kubernetes.io/hostname
+
+
+nginx:
+  nameOverride: "nginx"
+  strategy: 
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+  replicaCount: 1
+  image:
+    repository: hzent.amberdata.cn:8082/nginx
+    tag: "5.0"
+    imagePullPolicy: IfNotPresent
+    imagePullSecrets: 
+      - name: dev
+  livenessProbe:
+    enabled: true
+    initialDelaySeconds: 10
+    timeoutSeconds: 1
+    periodSeconds: 10
+    successThreshold: 1
+    failureThreshold: 3  
+  readinessProbe:
+    enabled: true
+    initialDelaySeconds: 10
+    timeoutSeconds: 1
+    periodSeconds: 10
+    successThreshold: 1
+    failureThreshold: 6
+  service:
+    name: nginx
+    type: ClusterIP
+    loadBalancerIP: ""
+    ports:
+      http:
+        targetPort: 80
+        port: 80
+        protocol: TCP
+  resources:
+    limits:
+      memory: "1Gi"
+  volumes:
+    timecontainerPath: /etc/localtime
+    timehostPath: /etc/localtime
+    readOnlyType: true
+    containerPath: /amberdata/nginx/data
+    hostPath: /amberdata/base/nginx/data
+    tmphostPath: /tmp
+    tmpcontainerPath: /tmp
+    nginxcontainerPath: /etc/nginx/nginx.conf
+    nginxsubPath: nginx.conf
+  securityContext: {}
+  fsGroup: 
+  runAsUser: 
+  secretMounts: []
+  # Custom broker configuration files path
+  configurationFilesPath: /amberdata/dev/nginx/conf
+  # Custom broker configuration files used to override default mysql settings
+  configurationFiles:
+    nginx.conf: |-
+      worker_processes  1;
+      
+      events {
+          worker_connections  1024;
+      }
+      
+      
+      http {
+      
+              map $http_upgrade $connection_upgrade {
+          default upgrade;
+          '' close;
+          }
+      
+          include       mime.types;
+          default_type  application/octet-stream;
+                            
+      
+          sendfile        on;
+          #tcp_nopush     on;
+      
+          #keepalive_timeout  0;
+            keepalive_timeout  6500;
+                client_body_buffer_size  1000m;
+                client_max_body_size  3000m;
+                proxy_headers_hash_max_size 51200;
+                proxy_headers_hash_bucket_size 6400;
+                client_header_buffer_size 10m;
+                large_client_header_buffers 4 5m;
+                proxy_http_version 1.1;
+
+         charset utf-8,gbk;
+          #gzip  on;  
+      
+          server {
+              listen       80;
+              server_name  127.0.0.1;
+      
+              charset utf-8,gbk;
+      
+      
+            location / {
+                  root   /html;
+                  index  index.html index.htm;
+            }
+
+            #cdn start
+            
+            location ~ ^/(ssologin|tdr|erms|admin|metadata|dm|platform|dataarchives|data|search|sgportal|teamwork)/assets/(.*){
+                proxy_pass   http://cdn.base.svc.cluster.local:30080/$1/assets/$2;
+                proxy_set_header  X-Real-IP  $remote_addr;
+                proxy_read_timeout 300;
+            }
+    
+            location /cdn/{
+                proxy_pass   http://cdn.base.svc.cluster.local:30080/;
+                proxy_set_header  X-Real-IP  $remote_addr;
+                proxy_read_timeout 300;
+            }
+            
+            #cdn end
+            
+            #frontend start
+            
+            #backend start
+
+            location /kibana {
+                proxy_pass        http://kibana.base.svc.cluster.local:5601/;
+                proxy_set_header  Host  $host:$server_port;
+                proxy_set_header  X-Real-IP  $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                rewrite ^/kibana/(.*)$ /$1 break;
+            }
+
+            location /nacos/ {
+               proxy_pass        http://nacos.base.svc.cluster.local:8848/nacos/;
+               proxy_set_header X-Real-IP $remote_addr;
+               proxy_read_timeout 300;
+            }
+            
+            #backend end 
+
+            error_page   500 502 503 504  /50x.html;
+            location = /50x.html {
+                root   html;
+            }
+          }
+        }
+  priorityClassName: ""  
+  tolerations: []
+  affinity: {}
+    # podAntiAffinity:
+    #   requiredDuringSchedulingIgnoredDuringExecution:
+    #     labelSelector:
+    #       matchExpressions:
+    #       - key: app
+    #         operator: In
+    #         values:
+    #         - ermspai
+    #     topologyKey: kubernetes.io/hostname
+
+
+cdn:
+  enabled: true
+  nameOverride: "cdn"
+  image:
+    repository: hzent.amberdata.cn:8082/cdn_x86
+    tag: "1.0"
+    imagePullPolicy: IfNotPresent
+    imagePullSecrets: 
+      - name: dev
+  service:
+    name: cdn
+    type: ClusterIP
+    loadBalancerIP: ""
+    annotations: {}
+    ports:
+      http:
+        targetPort: 30080
+        port: 30080
+        protocol: TCP  
+  resources: 
+  priorityClassName: ""
+  tolerations: []
+  affinity: {}
+      # podAntiAffinity:
+      #   requiredDuringSchedulingIgnoredDuringExecution:
+      #     labelSelector:
+      #       matchExpressions:
+      #       - key: app
+      #         operator: In
+      #         values:
+      #         - ermspai
+      #     topologyKey: kubernetes.io/hostname
+  podAnnotations: {}
+  podLabels: {}    
+  securityContext: {}  
+  serviceAccount:  {}
+  secretMounts: 
+    enabled: false  
+  volumes:
+    timecontainerPath: /etc/localtime
+    timevolumeName: localtime
+    timehostPath: /etc/localtime
+    readOnlyType: true
+    containerPath: /www-data
+    volumeName: data
+    hostPath: /amberdata/www-data
+  persistence:
+    enabled: true
+    existingClaim: ""
+    claimName: cdn-data
+    mountPath: /www-data
+    accessModes: "ReadWriteOnce" 
+    size: 5Gi
+
+minio:
+  nameOverride: "minio"
+  image:
+    repository: hzent.amberdata.cn:8082/minio
+    tag: "5.0"
+    imagePullPolicy: IfNotPresent
+    imagePullSecrets: 
+      - name: dev
+  env: 
+    - name: MINIO_ACCESS_KEY
+      value: "admin"
+    - name: MINIO_SECRET_KEY
+      value: "Dctm@1234"
+  command:
+    - minio 
+    - server
+    - /data
+  service:
+    name: minio
+    type: ClusterIP
+    loadBalancerIP: ""
+    annotations: {}
+    ports:
+      http:
+        targetPort: 9000
+        port: 9000
+        protocol: TCP  
+  resources: 
+    limits:
+      memory: "2Gi"
+  priorityClassName: ""
+  tolerations: []
+  affinity: {}
+      # podAntiAffinity:
+      #   requiredDuringSchedulingIgnoredDuringExecution:
+      #     labelSelector:
+      #       matchExpressions:
+      #       - key: app
+      #         operator: In
+      #         values:
+      #         - ermspai
+      #     topologyKey: kubernetes.io/hostname
+  podAnnotations: {}
+  podLabels: {}    
+  securityContext: {}  
+  serviceAccount:  {}
+  secretMounts: 
+    enabled: false  
+  volumes:
+    localtimecontainerPath: /etc/localtime
+    localtimevolumeName: localtime
+    localtimehostPath: /etc/localtime
+    readOnlyType: true
+    datavolumeName: data
+    datacontainerPath: /data
+    confcontainerPath: /root/.minio
+    confvolumeName: conf
+    confhostPath: /amberdata/base/minio/config
+  persistence:
+    existingClaim: ""
+    claimName: minio-data
+    mountPath: /data
+    accessModes: "ReadWriteOnce" 
+    size: 5Gi

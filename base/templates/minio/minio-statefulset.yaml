@@ -1,0 +1,102 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ template "minio.name" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ template "minio.name" . }}
+    chart: {{ template "minio.chart" . }}
+    release: {{ template "minio.name" . }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ template "minio.name" . }}
+      release: {{ template "minio.name" . }}
+  serviceName: {{ template "minio.name" . }}
+  updateStrategy:
+    type: {{ .Values.updateStrategy.type }}
+    {{- if .Values.rollingUpdatePartition }}
+    {{- if (eq "Recreate" .Values.updateStrategy) }}
+    rollingUpdate: null
+    {{- else }}
+    rollingUpdate:
+      partition: {{ .Values.rollingUpdatePartition }}
+    {{- end }}
+    {{- end }}
+  template:
+    metadata:
+      labels:
+        app: {{ template "minio.name" . }}
+        release: {{ template "minio.name" . }}
+{{- with .Values.minio.podLabels }}
+{{ toYaml . | indent 8 }}
+{{- end }}
+{{- with .Values.minio.podAnnotations }}
+      annotations:
+{{ toYaml . | indent 8 }}
+{{- end }}
+    spec:
+      schedulerName: "{{ .Values.minio.schedulerName }}"
+      imagePullSecrets:
+      priorityClassName: "{{ .Values.minio.priorityClassName }}"
+      securityContext:
+        fsGroup: {{ .Values.minio.securityContext.fsGroup }}
+        runAsUser: {{ .Values.minio.securityContext.runAsUser }}
+      containers:
+        - name: minio
+          image: {{ .Values.minio.image.repository}}:{{ .Values.minio.image.tag }}
+          imagePullPolicy: {{ .Values.minio.image.imagePullPolicy  }}
+          command: 
+            {{- toYaml .Values.minio.command | nindent 12 }}
+          ports:
+            - name: http
+              containerPort: 9000
+              protocol: TCP
+          env:
+{{ toYaml .Values.minio.env | indent 12 }}
+          resources:
+            {{- toYaml .Values.minio.resources | nindent 12 }}
+          volumeMounts:
+            - mountPath: {{ .Values.minio.volumes.datacontainerPath }} 
+              name: {{ .Values.minio.volumes.datavolumeName }}
+            - mountPath: {{ .Values.minio.volumes.localtimecontainerPath }}
+              readOnly: {{ .Values.minio.volumes.readOnlyType }}
+              name: {{ .Values.minio.volumes.localtimevolumeName }}
+            - mountPath: {{ .Values.minio.volumes.confcontainerPath }}
+              name: {{ .Values.minio.volumes.confvolumeName }}
+          lifecycle: 
+          {{- toYaml .Values.minio.lifecycle | nindent 12 }}
+        {{- with .Values.minio.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.minio.affinity }}
+      affinity:
+        {{ toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.minio.tolerations }}
+      tolerations:
+        {{ toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+        - name: {{ .Values.minio.volumes.localtimevolumeName }}
+          hostPath:
+            path: {{ .Values.minio.volumes.localtimehostPath }}
+        - name: {{ .Values.minio.volumes.confvolumeName }}
+          hostPath:
+            path: {{ .Values.minio.volumes.confhostPath }}
+        - name: {{ .Values.minio.volumes.datavolumeName }}
+          persistentVolumeClaim:
+            claimName: {{ .Values.minio.persistence.claimName }}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+        labels:
+          app: "{{ template "minio.name" . }}"
+          release: "{{ template "minio.name" . }}"
+      spec:
+        accessModes: [{{ .Values.minio.persistence.accessModes | quote }}]
+        resources:
+          requests: 
+            storage: {{ .Values.minio.persistence.size | quote }}     

@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: conf
+  namespace: {{ .Release.Namespace }}
+data:
+{{ toYaml .Values.nginx.configurationFiles | indent 4 }}

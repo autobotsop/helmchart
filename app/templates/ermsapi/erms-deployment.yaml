@@ -1,0 +1,85 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ template "ermsapi.name" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ template "ermsapi.name" . }}
+    chart: {{ template "ermsapi.chart" . }}
+    release: {{ template "ermsapi.name" . }}{{- with .Values.deploymentAnnotations }}  annotations:{{ toYaml . | indent 4 }}{{- end }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ template "ermsapi.name" . }}
+      release: {{ template "ermsapi.name" . }}
+  strategy:
+{{- toYaml .Values.strategy | nindent 4 }}
+  template:
+    metadata:
+      labels:
+        app: {{ template "ermsapi.name" . }}
+        release: {{ template "ermsapi.name" . }}
+{{- with .Values.podLabels }}
+{{ toYaml . | indent 8 }}
+{{- end }}
+{{- with .Values.podAnnotations }}
+      annotations:
+{{ toYaml . | indent 8 }}
+{{- end }}
+    spec:
+      {{- if .Values.schedulerName }}
+      schedulerName: "{{ .Values.schedulerName }}"
+      {{- end }}
+      {{- if .Values.erms.image.imagePullSecrets }}
+      imagePullSecrets:
+{{ toYaml .Values.erms.image.imagePullSecrets | indent 8 }}
+      {{- end }}
+      {{- if .Values.priorityClassName }}
+      priorityClassName: "{{ .Values.priorityClassName }}"
+      {{- end }}
+      containers:
+        - name: ermsapi
+          image: {{ .Values.erms.image.repository}}:{{ .Values.erms.image.tag }}
+          imagePullPolicy: {{ .Values.erms.image.imagePullPolicy  }}
+          command: 
+            {{- toYaml .Values.erms.command | nindent 12 }}
+          ports: 
+            - name: apiport
+              containerPort: 8010
+              protocol: TCP
+            - name: rpcport
+              containerPort: 22204
+              protocol: TCP                       
+          env:
+{{ toYaml .Values.erms.env | indent 12 }}
+          resources:
+            {{- toYaml .Values.erms.resources | nindent 12 }}
+          volumeMounts:
+            {{- if .Values.erms.volumeMounts }}
+            {{- toYaml .Values.erms.volumeMounts | nindent 12 }}
+            {{- end }}
+            {{- range $key, $value := .Values.erms.secretMounts }}
+            - name: {{ $key }}
+              mountPath: {{ $value.mountPath }}
+            {{- end }}
+        {{- with .Values.erms.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.erms.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.erms.tolerations }}
+      tolerations:
+        {{ toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+        {{- toYaml .Values.erms.volumes | default "" | nindent 8 }}
+        {{- range $key, $value := .Values.erms.secretMounts }}
+        - name: {{ $key }}
+          secret:
+            secretName: {{ $value.secretName }}
+            defaultMode: {{ $value.defaultMode }}
+        {{- end }}

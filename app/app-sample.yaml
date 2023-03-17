@@ -1,0 +1,863 @@
+# Source: amberdata-app/templates/adminapi/admin-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: adminapi
+  namespace: default
+  labels:
+    app: adminapi
+    chart: amberdata-app-1.0.0
+    release: adminapi
+spec:
+  type: ClusterIP
+  ports:
+    - name: apiport
+      port: 8001
+      protocol: TCP
+      targetPort: 8001
+    - name: jvmport
+      port: 48001
+      protocol: TCP
+      targetPort: 48001
+    - name: rpcport
+      port: 22200
+      protocol: TCP
+      targetPort: 22200
+  selector:
+    app: adminapi
+    release: adminapi
+---
+# Source: amberdata-app/templates/amber-dataflow/dataflow-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: dataflow
+  labels:
+    app: dataflow
+    chart: amberdata-app-1.0.0
+    release: dataflow
+spec:
+  type: ClusterIP
+  ports:
+    - name: apiport
+      port: 8090
+      protocol: TCP
+      targetPort: 8090
+  selector:
+    app: dataflow
+    release: dataflow
+---
+# Source: amberdata-app/templates/dataarchivesapi/dataarchives-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: dataarchivesapi
+  namespace: default
+  labels:
+    app: dataarchivesapi
+    chart: amberdata-app-1.0.0
+    release: dataarchivesapi
+spec:
+  type: ClusterIP
+  ports:
+    - name: apiport
+      port: 8013
+      protocol: TCP
+      targetPort: 8013
+    - name: rpc
+      port: 22213
+      protocol: TCP
+      targetPort: 22213
+  selector:
+    app: dataarchivesapi
+    release: dataarchivesapi
+---
+# Source: amberdata-app/templates/datartapi/datart-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: datartapi
+  namespace: default
+  labels:
+    app: datartapi
+    chart: amberdata-app-1.0.0
+    release: datartapi
+spec:
+  type: ClusterIP
+  ports:
+    - name: apiport
+      port: 8070
+      protocol: TCP
+      targetPort: 8070
+  selector:
+    app: datartapi
+    release: datartapi
+---
+# Source: amberdata-app/templates/docview/docview-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: docview
+  namespace: default
+  labels:
+    app: docview
+    chart: amberdata-app-1.0.0
+    release: docview
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 7004
+      protocol: TCP
+      targetPort: 7004
+  selector:
+    app: docview
+    release: docview
+---
+# Source: amberdata-app/templates/ermsapi/erms-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: ermsapi
+  namespace: default
+  labels:
+    app: ermsapi
+    chart: amberdata-app-1.0.0
+    release: ermsapi
+spec:
+  type: ClusterIP
+  ports:
+    - name: apiport
+      port: 8010
+      protocol: TCP
+      targetPort: 8010
+    - name: rpcport
+      port: 22204
+      protocol: TCP
+      targetPort: 22204
+  selector:
+    app: ermsapi
+    release: ermsapi
+---
+# Source: amberdata-app/templates/metadataapi/metadata-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: metadataapi
+  namespace: default
+  labels:
+    app: metadataapi
+    chart: amberdata-app-1.0.0
+    release: metadataapi
+spec:
+  type: ClusterIP
+  ports:
+    - name: apiport
+      port: 8002
+      protocol: TCP
+      targetPort: 8002
+    - name: rpcport
+      port: 22201
+      protocol: TCP
+      targetPort: 22201
+  selector:
+    app: metadataapi
+    release: metadataapi
+---
+# Source: amberdata-app/templates/osprey/osprey-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: osprey
+  namespace: default
+  labels:
+    app: osprey
+    chart: amberdata-app-1.0.0
+    release: osprey
+spec:
+  type: ClusterIP
+  ports:
+    - name: apiport
+      port: 8004
+      protocol: TCP
+      targetPort: 8004
+    - name: rpcport
+      port: 22206
+      protocol: TCP
+      targetPort: 22206
+  selector:
+    app: osprey
+    release: osprey
+---
+# Source: amberdata-app/templates/searchapi/search-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: searchapi
+  namespace: default
+  labels:
+    app: searchapi
+    chart: amberdata-app-1.0.0
+    release: searchapi
+spec:
+  type: ClusterIP
+  ports:
+    - name: apiport
+      port: 8008
+      protocol: TCP
+      targetPort: 8008
+    - name: rpcport
+      port: 22205
+      protocol: TCP
+      targetPort: 22205
+  selector:
+    app: searchapi
+    release: searchapi
+---
+# Source: amberdata-app/templates/validatorapi/validator-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: validatorapi
+  namespace: default
+  labels:
+    app: validatorapi
+    chart: amberdata-app-1.0.0
+    release: validatorapi
+spec:
+  type: ClusterIP
+  ports:
+    - name: apiport
+      port: 8003
+      protocol: TCP
+      targetPort: 8003
+    - name: rpcport
+      port: 22209
+      protocol: TCP
+      targetPort: 22209
+  selector:
+    app: validatorapi
+    release: validatorapi
+---
+# Source: amberdata-app/templates/adminapi/admin-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: adminapi
+  namespace: default
+  labels:
+    app: adminapi
+    chart: amberdata-app-1.0.0
+    release: adminapi
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: adminapi
+      release: adminapi
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: adminapi
+        release: adminapi
+    spec:
+      imagePullSecrets:
+        - name: dev
+      containers:
+        - name: adminapi
+          image: hzent.amberdata.cn:8082/adminapi:V5.5.0-release
+          imagePullPolicy: IfNotPresent
+          command:
+            - java
+            - -D${NACOS_NAMESPACE}
+            - -agentlib:jdwp=transport=dt_socket,address=48001,server=y,suspend=n
+            - -jar
+            - /adminapi.jar
+          ports: 
+            - name: apiport
+              containerPort: 8001
+              protocol: TCP
+            - name: rpcport
+              containerPort: 22200
+              protocol: TCP  
+            - name: jvmport
+              containerPort: 48001
+              protocol: TCP                              
+          env:
+            - name: NACOS_NAMESPACE
+              value: amberdata
+          resources:
+            null
+          volumeMounts:
+            - mountPath: /logs
+              name: logs
+      volumes:
+        - hostPath:
+            path: /logs
+          name: logs
+---
+# Source: amberdata-app/templates/amber-dataflow/dataflow-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dataflow
+  namespace: default
+  labels:
+    app: dataflow
+    chart: amberdata-app-1.0.0
+    release: dataflow
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dataflow
+      release: dataflow
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: dataflow
+        release: dataflow
+    spec:
+      imagePullSecrets:
+        - name: dev
+      containers:
+        - name: dataflow
+          image: hzent.amberdata.cn:8082/amber-dataflow:1.16.3
+          imagePullPolicy: IfNotPresent
+          command:
+            null
+          ports: 
+            - name: apiport
+              containerPort: 8090
+              protocol: TCP                             
+          env:
+            - name: NIFI_WEB_HTTP_PORT
+              value: "8090"
+          resources:
+            null
+          volumeMounts:
+            - mountPath: /etc/localtime
+              name: time
+              readOnly: true
+      volumes:
+        - hostPath:
+            path: /etc/localtime
+          name: time
+---
+# Source: amberdata-app/templates/dataarchivesapi/dataarchives-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dataarchivesapi
+  namespace: default
+  labels:
+    app: dataarchivesapi
+    chart: amberdata-app-1.0.0
+    release: dataarchivesapi
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dataarchivesapi
+      release: dataarchivesapi
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: dataarchivesapi
+        release: dataarchivesapi
+    spec:
+      imagePullSecrets:
+        - name: dev
+      containers:
+        - name: dataarchivesapi
+          image: hzent.amberdata.cn:8082/dataarchivesapi:V5.0.2-20220719-Release
+          imagePullPolicy: IfNotPresent
+          command:
+            - java
+            - -D${NACOS_NAMESPACE}
+            - -jar
+            - /dataarchivesapi.jar
+          ports: 
+            - name: apiport
+              containerPort: 8013
+              protocol: TCP
+            - name: rpc
+              containerPort: 22213
+              protocol: TCP                             
+          env:
+            - name: NACOS_NAMESPACE
+              value: amberdata
+          resources:
+            null
+          volumeMounts:
+            - mountPath: /logs
+              name: logs
+            - mountPath: /tmp
+              name: tmp
+            - mountPath: /etc/localtime
+              name: time
+              readOnly: true
+      volumes:
+        - hostPath:
+            path: /etc/localtime
+          name: time
+        - hostPath:
+            path: /logs
+          name: logs
+        - hostPath:
+            path: /tmp
+          name: tmp
+---
+# Source: amberdata-app/templates/datartapi/datart-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: datartapi
+  namespace: default
+  labels:
+    app: datartapi
+    chart: amberdata-app-1.0.0
+    release: datartapi
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: datartapi
+      release: datartapi
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: datartapi
+        release: datartapi
+    spec:
+      imagePullSecrets:
+        - name: dev
+      containers:
+        - name: datart
+          image: hzent.amberdata.cn:8082/datartapi:V1.1.3-20220726-Release
+          imagePullPolicy: IfNotPresent
+          command:
+            null
+          ports: 
+            - name: apiport
+              containerPort: 8070
+              protocol: TCP                   
+          env:
+            - name: NACOS_NAMESPACE
+              value: amberdata
+          resources:
+            null
+          volumeMounts:
+            - mountPath: /etc/localtime
+              name: time
+              readOnly: true
+            - mountPath: /logs
+              name: logs
+      volumes:
+        - hostPath:
+            path: /etc/localtime
+          name: time
+        - hostPath:
+            path: /logs
+          name: logs
+---
+# Source: amberdata-app/templates/docview/docview-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: docview
+  namespace: default
+  labels:
+    app: docview
+    chart: amberdata-app-1.0.0
+    release: docview
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: docview
+      release: docview
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: docview
+        release: docview
+    spec:
+      imagePullSecrets:
+        - name: dev
+      containers:
+        - name: docview
+          image: hzent.amberdata.cn:8082/docview:4.0
+          imagePullPolicy: IfNotPresent
+          command:
+            - nginx
+            - -g
+            - daemon off;
+          ports: 
+            - name: http
+              containerPort: 7004
+              protocol: TCP              
+          env:
+            null
+          resources:
+            null
+          volumeMounts:
+            - mountPath: /etc/localtime
+              name: time
+              readOnly: true
+      volumes:
+        - hostPath:
+            path: /etc/localtime
+          name: time
+---
+# Source: amberdata-app/templates/ermsapi/erms-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ermsapi
+  namespace: default
+  labels:
+    app: ermsapi
+    chart: amberdata-app-1.0.0
+    release: ermsapi
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ermsapi
+      release: ermsapi
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: ermsapi
+        release: ermsapi
+    spec:
+      imagePullSecrets:
+        - name: dev
+      containers:
+        - name: ermsapi
+          image: hzent.amberdata.cn:8082/ermsapi:V6.5.0-RELEAS
+          imagePullPolicy: IfNotPresent
+          command:
+            - java
+            - -D${NACOS_NAMESPACE}
+            - -agentlib:jdwp=transport=dt_socket,address=8888,server=y,suspend=n
+            - -jar
+            - /ermsapi.jar
+          ports: 
+            - name: apiport
+              containerPort: 8010
+              protocol: TCP
+            - name: rpcport
+              containerPort: 22204
+              protocol: TCP                       
+          env:
+            - name: NACOS_NAMESPACE
+              value: amberdata
+          resources:
+            null
+          volumeMounts:
+            - mountPath: /logs
+              name: logs
+            - mountPath: /tmp
+              name: tmp
+            - mountPath: /etc/localtime
+              name: time
+              readOnly: true
+      volumes:
+        - hostPath:
+            path: /etc/localtime
+          name: time
+        - hostPath:
+            path: /logs
+          name: logs
+        - hostPath:
+            path: /tmp
+          name: tmp
+---
+# Source: amberdata-app/templates/metadataapi/metadata-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: metadataapi
+  namespace: default
+  labels:
+    app: metadataapi
+    chart: amberdata-app-1.0.0
+    release: metadataapi
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: metadataapi
+      release: metadataapi
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: metadataapi
+        release: metadataapi
+    spec:
+      imagePullSecrets:
+        - name: dev
+      containers:
+        - name: metadataapi
+          image: hzent.amberdata.cn:8082/metadataapi:V6.0.0-release
+          imagePullPolicy: IfNotPresent
+          command:
+            - java
+            - -D${NACOS_NAMESPACE}
+            - -jar
+            - /metadataapi.jar
+          ports: 
+            - name: apiport
+              containerPort: 8002
+              protocol: TCP
+            - name: rpcport
+              containerPort: 22201
+              protocol: TCP                       
+          env:
+            - name: NACOS_NAMESPACE
+              value: amberdata
+          resources:
+            null
+          volumeMounts:
+            - mountPath: /logs
+              name: logs
+            - mountPath: /tmp
+              name: tmp
+      volumes:
+        - hostPath:
+            path: /logs
+          name: logs
+        - hostPath:
+            path: /tmp
+          name: tmp
+---
+# Source: amberdata-app/templates/osprey/osprey-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: osprey
+  namespace: default
+  labels:
+    app: osprey
+    chart: amberdata-app-1.0.0
+    release: osprey
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: osprey
+      release: osprey
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: osprey
+        release: osprey
+    spec:
+      imagePullSecrets:
+        - name: dev
+      containers:
+        - name: osprey
+          image: hzent.amberdata.cn:8082/osprey:V5.0.0-20210420-Release
+          imagePullPolicy: IfNotPresent
+          command:
+            - java
+            - -D${NACOS_NAMESPACE}
+            - -jar
+            - -Xms2048m
+            - -Xmx2048m
+            - /osprey.jar
+          ports: 
+            - name: apiport
+              containerPort: 8004
+              protocol: TCP
+            - name: rpcport
+              containerPort: 22206
+              protocol: TCP
+          env:
+            - name: NACOS_NAMESPACE
+              value: amberdata
+          resources:
+            null
+          volumeMounts:
+            - mountPath: /logs
+              name: logs
+            - mountPath: /etc/localtime
+              name: time
+              readOnly: true
+      volumes:
+        - hostPath:
+            path: /etc/localtime
+          name: time
+        - hostPath:
+            path: /logs
+          name: logs
+---
+# Source: amberdata-app/templates/searchapi/search-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: searchapi
+  namespace: default
+  labels:
+    app: searchapi
+    chart: amberdata-app-1.0.0
+    release: searchapi
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: searchapi
+      release: searchapi
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: searchapi
+        release: searchapi
+    spec:
+      imagePullSecrets:
+        - name: dev
+      containers:
+        - name: searchapi
+          image: hzent.amberdata.cn:8082/searchapi:6.0.0-20220730-Release
+          imagePullPolicy: IfNotPresent
+          command:
+            - java
+            - -D${NACOS_NAMESPACE}
+            - -jar
+            - /searchapi.jar
+          ports: 
+            - name: apiport
+              containerPort: 8008
+              protocol: TCP
+            - name: rpcport
+              containerPort: 22205
+              protocol: TCP                       
+          env:
+            - name: NACOS_NAMESPACE
+              value: amberdata
+          resources:
+            null
+          volumeMounts:
+            - mountPath: /etc/localtime
+              name: time
+              readOnly: true
+            - mountPath: /logs
+              name: logs
+      volumes:
+        - hostPath:
+            path: /etc/localtime
+          name: time
+        - hostPath:
+            path: /logs
+          name: logs
+---
+# Source: amberdata-app/templates/validatorapi/validator-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: validatorapi
+  namespace: default
+  labels:
+    app: validatorapi
+    chart: amberdata-app-1.0.0
+    release: validatorapi
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: validatorapi
+      release: chart-1669365201
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: validatorapi
+        release: chart-1669365201
+    spec:
+      imagePullSecrets:
+        - name: dev
+      containers:
+        - name: validatorapi
+          image: hzent.amberdata.cn:8082/validatorapi:V6.0.0-20220803-Release
+          imagePullPolicy: IfNotPresent
+          command:
+            - java
+            - -D${NACOS_NAMESPACE}
+            - -jar
+            - /validatorapi.jar
+          ports: 
+            - name: apiport
+              containerPort: 8003
+              protocol: TCP
+            - name: rpcport
+              containerPort: 22209
+              protocol: TCP
+          env:
+            - name: NACOS_NAMESPACE
+              value: amberdata
+          resources:
+            null
+          volumeMounts:
+            - mountPath: /logs
+              name: logs
+            - mountPath: /etc/localtime
+              name: time
+              readOnly: true
+      volumes:
+        - hostPath:
+            path: /logs
+          name: logs
+        - hostPath:
+            path: /etc/localtime
+          name: time

@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: broker-configuration
+  namespace: {{ .Release.Namespace }}
+data:
+{{ toYaml .Values.broker.configurationFiles | indent 4 }}

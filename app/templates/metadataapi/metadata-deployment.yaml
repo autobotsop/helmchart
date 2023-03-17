@@ -1,0 +1,85 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ template "metadataapi.name" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ template "metadataapi.name" . }}
+    chart: {{ template "metadataapi.chart" . }}
+    release: {{ template "metadataapi.name" . }}{{- with .Values.deploymentAnnotations }}  annotations:{{ toYaml . | indent 4 }}{{- end }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ template "metadataapi.name" . }}
+      release: {{ template "metadataapi.name" . }}
+  strategy:
+{{- toYaml .Values.strategy | nindent 4 }}
+  template:
+    metadata:
+      labels:
+        app: {{ template "metadataapi.name" . }}
+        release: {{ template "metadataapi.name" . }}
+{{- with .Values.podLabels }}
+{{ toYaml . | indent 8 }}
+{{- end }}
+{{- with .Values.podAnnotations }}
+      annotations:
+{{ toYaml . | indent 8 }}
+{{- end }}
+    spec:
+      {{- if .Values.schedulerName }}
+      schedulerName: "{{ .Values.schedulerName }}"
+      {{- end }}
+      {{- if .Values.metadata.image.imagePullSecrets }}
+      imagePullSecrets:
+{{ toYaml .Values.metadata.image.imagePullSecrets | indent 8 }}
+      {{- end }}
+      {{- if .Values.priorityClassName }}
+      priorityClassName: "{{ .Values.priorityClassName }}"
+      {{- end }}
+      containers:
+        - name: metadataapi
+          image: {{ .Values.metadata.image.repository}}:{{ .Values.metadata.image.tag }}
+          imagePullPolicy: {{ .Values.metadata.image.imagePullPolicy  }}
+          command: 
+            {{- toYaml .Values.metadata.command | nindent 12 }}
+          ports: 
+            - name: apiport
+              containerPort: 8002
+              protocol: TCP
+            - name: rpcport
+              containerPort: 22201
+              protocol: TCP                       
+          env:
+{{ toYaml .Values.metadata.env | indent 12 }}
+          resources:
+            {{- toYaml .Values.metadata.resources | nindent 12 }}
+          volumeMounts:
+            {{- if .Values.metadata.volumeMounts }}
+            {{- toYaml .Values.metadata.volumeMounts | nindent 12 }}
+            {{- end }}
+            {{- range $key, $value := .Values.metadata.secretMounts }}
+            - name: {{ $key }}
+              mountPath: {{ $value.mountPath }}
+            {{- end }}
+        {{- with .Values.metadata.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.metadata.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.metadata.tolerations }}
+      tolerations:
+        {{ toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+        {{- toYaml .Values.metadata.volumes | default "" | nindent 8 }}
+        {{- range $key, $value := .Values.metadata.secretMounts }}
+        - name: {{ $key }}
+          secret:
+            secretName: {{ $value.secretName }}
+            defaultMode: {{ $value.defaultMode }}
+        {{- end }}

@@ -1,0 +1,85 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ template "dataarchivesapi.name" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ template "dataarchivesapi.name" . }}
+    chart: {{ template "dataarchivesapi.chart" . }}
+    release: {{ template "dataarchivesapi.name" . }}{{- with .Values.deploymentAnnotations }}  annotations:{{ toYaml . | indent 4 }}{{- end }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ template "dataarchivesapi.name" . }}
+      release: {{ template "dataarchivesapi.name" . }}
+  strategy:
+{{- toYaml .Values.strategy | nindent 4 }}
+  template:
+    metadata:
+      labels:
+        app: {{ template "dataarchivesapi.name" . }}
+        release: {{ template "dataarchivesapi.name" . }}
+{{- with .Values.podLabels }}
+{{ toYaml . | indent 8 }}
+{{- end }}
+{{- with .Values.podAnnotations }}
+      annotations:
+{{ toYaml . | indent 8 }}
+{{- end }}
+    spec:
+      {{- if .Values.schedulerName }}
+      schedulerName: "{{ .Values.schedulerName }}"
+      {{- end }}
+      {{- if .Values.dataarchives.image.imagePullSecrets }}
+      imagePullSecrets:
+{{ toYaml .Values.dataarchives.image.imagePullSecrets | indent 8 }}
+      {{- end }}
+      {{- if .Values.priorityClassName }}
+      priorityClassName: "{{ .Values.priorityClassName }}"
+      {{- end }}
+      containers:
+        - name: dataarchivesapi
+          image: {{ .Values.dataarchives.image.repository}}:{{ .Values.dataarchives.image.tag }}
+          imagePullPolicy: {{ .Values.dataarchives.image.imagePullPolicy  }}
+          command: 
+            {{- toYaml .Values.dataarchives.command | nindent 12 }}
+          ports: 
+            - name: apiport
+              containerPort: 8013
+              protocol: TCP
+            - name: rpc
+              containerPort: 22213
+              protocol: TCP                             
+          env:
+{{ toYaml .Values.dataarchives.env | indent 12 }}
+          resources:
+            {{- toYaml .Values.dataarchives.resources | nindent 12 }}
+          volumeMounts:
+            {{- if .Values.dataarchives.volumeMounts }}
+            {{- toYaml .Values.dataarchives.volumeMounts | nindent 12 }}
+            {{- end }}
+            {{- range $key, $value := .Values.dataarchives.secretMounts }}
+            - name: {{ $key }}
+              mountPath: {{ $value.mountPath }}
+            {{- end }}
+        {{- with .Values.dataarchives.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.dataarchives.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.dataarchives.tolerations }}
+      tolerations:
+        {{ toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+        {{- toYaml .Values.dataarchives.volumes | default "" | nindent 8 }}
+        {{- range $key, $value := .Values.dataarchives.secretMounts }}
+        - name: {{ $key }}
+          secret:
+            secretName: {{ $value.secretName }}
+            defaultMode: {{ $value.defaultMode }}
+        {{- end }}

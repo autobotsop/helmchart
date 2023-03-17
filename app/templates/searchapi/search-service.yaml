@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ template "searchapi.name" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ template "searchapi.name" . }}
+    chart: {{ template "searchapi.chart" . }}
+    release: {{ template "searchapi.name" . }}
+spec:
+  type: {{ .Values.search.service.type }}
+  ports:
+  {{- range $key, $value := .Values.search.service.ports }}
+    - name: {{ $key }}
+{{ toYaml $value | indent 6 }}
+  {{- end }}
+  selector:
+    app: {{ template "searchapi.name" . }}
+    release: {{ template "searchapi.name" . }}

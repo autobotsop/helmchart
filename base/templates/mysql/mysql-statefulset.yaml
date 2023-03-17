@@ -1,0 +1,132 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ template "mysql.name" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ template "mysql.name" . }}
+    chart: {{ template "mysql.chart" . }}
+    release: {{ template "mysql.name" . }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ template "mysql.name" . }}
+      release: {{ template "mysql.name" . }}
+  serviceName: {{ template "mysql.name" . }}
+  updateStrategy:
+    type: {{ .Values.updateStrategy.type }}
+    {{- if .Values.rollingUpdatePartition }}
+    {{- if (eq "Recreate" .Values.updateStrategy) }}
+    rollingUpdate: null
+    {{- else }}
+    rollingUpdate:
+      partition: {{ .Values.rollingUpdatePartition }}
+    {{- end }}
+    {{- end }}
+  template:
+    metadata:
+      labels:
+        app: {{ template "mysql.name" . }}
+        release: {{ template "mysql.name" . }}
+{{- with .Values.podLabels }}
+{{ toYaml . | indent 8 }}
+{{- end }}
+{{- with .Values.podAnnotations }}
+      annotations:
+{{ toYaml . | indent 8 }}
+{{- end }}
+    spec:
+      {{- if .Values.mysql.schedulerName }}
+      schedulerName: "{{ .Values.mysql.schedulerName }}"
+      {{- end }}
+      imagePullSecrets:
+{{ toYaml .Values.mysql.image.imagePullSecrets | indent 8 }}
+      priorityClassName: "{{ .Values.mysql.priorityClassName }}"
+      securityContext:
+        fsGroup: {{ .Values.mysql.securityContext.fsGroup }}
+        runAsUser: {{ .Values.mysql.securityContext.runAsUser }}
+      {{- if .Values.mysql.serviceAccount.enabled }}
+      serviceAccount: {{ .Values.mysql.serviceAccount.name }}
+      {{- end }}
+      containers:
+        - name: mysql
+          image: {{ .Values.mysql.image.repository}}:{{ .Values.mysql.image.tag }}
+          imagePullPolicy: {{ .Values.mysql.image.imagePullPolicy  }}
+          command: 
+            {{- toYaml .Values.mysql.command | nindent 12 }}
+          ports:
+            - name: tcp
+              containerPort: 3306
+              protocol: TCP
+          livenessProbe:
+            initialDelaySeconds: {{ .Values.mysql.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.mysql.livenessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.mysql.livenessProbe.timeoutSeconds }}
+            successThreshold: {{ .Values.mysql.livenessProbe.successThreshold }}
+            failureThreshold: {{ .Values.mysql.livenessProbe.failureThreshold }}
+            exec:
+              command:
+              - /bin/bash
+              - -c
+              - "mysqladmin ping -u root -h 127.0.0.1 -p${MYSQL_ROOT_PASSWORD}"
+          readinessProbe:
+            initialDelaySeconds: {{ .Values.mysql.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.mysql.readinessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.mysql.readinessProbe.timeoutSeconds }}
+            successThreshold: {{ .Values.mysql.readinessProbe.successThreshold }}
+            failureThreshold: {{ .Values.mysql.readinessProbe.failureThreshold }}
+            exec:
+              command:
+              - /bin/bash
+              - -c
+              - "mysqladmin ping -u root -h 127.0.0.1 -p${MYSQL_ROOT_PASSWORD}"  
+          env:
+{{ toYaml .Values.mysql.env | indent 12 }}
+          resources:
+            {{- toYaml .Values.mysql.resources | nindent 12 }}
+          volumeMounts:
+            - mountPath: {{ .Values.mysql.volumes.timecontainerPath }}
+              readOnly: {{ .Values.mysql.volumes.readOnlyType }}
+              name: {{ .Values.mysql.volumes.timevolumeName }}
+            - mountPath: {{ .Values.mysql.volumes.confcontainerPath }}
+              name: {{ .Values.mysql.volumes.confvolumeName }}  
+            - mountPath: {{ .Values.mysql.volumes.datacontainerPath }} 
+              name: {{ .Values.mysql.volumes.datavolumeName }}                 
+          lifecycle: 
+          {{- toYaml .Values.mysql.lifecycle | nindent 12 }}
+        {{- with .Values.mysql.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.mysql.affinity }}
+      affinity:
+        {{ toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{ toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+        - name: {{ .Values.mysql.volumes.timevolumeName }}
+          hostPath:
+            path: {{ .Values.mysql.volumes.timehostPath }}
+        - name: {{ template "mysql.name" . }}-configuration
+          configMap:
+            name: {{ template "mysql.name" . }}-configuration
+        - name: {{ .Values.mysql.volumes.datavolumeName }}  
+        {{- if .Values.mysql.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ .Values.mysql.persistence.claimName }}         
+      {{- end }}
+  volumeClaimTemplates:
+    - metadata:
+        name: {{ .Values.mysql.volumes.datavolumeName }}  
+        labels:
+          app: "{{ template "mysql.name" . }}"
+          release: {{ .Release.Name | quote }}
+      spec:
+        accessModes: [{{ .Values.mysql.persistence.accessModes | quote }}]
+        resources:
+          requests: 
+            storage: {{ .Values.mysql.persistence.size | quote }}

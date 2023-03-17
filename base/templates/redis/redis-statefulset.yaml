@@ -1,0 +1,136 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ template "redis.name" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ template "redis.name" . }}
+    chart: {{ template "redis.chart" . }}
+    release: {{ template "redis.name" . }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ template "redis.name" . }}
+      release: {{ template "redis.name" . }}
+  serviceName: {{ template "redis.name" . }}
+  updateStrategy:
+    type: {{ .Values.updateStrategy.type }}
+    {{- if .Values.rollingUpdatePartition }}
+    {{- if (eq "Recreate" .Values.updateStrategy) }}
+    rollingUpdate: null
+    {{- else }}
+    rollingUpdate:
+      partition: {{ .Values.rollingUpdatePartition }}
+    {{- end }}
+    {{- end }}
+  template:
+    metadata:
+      labels:
+        app: {{ template "redis.name" . }}
+        release: {{ template "redis.name" . }}
+{{- with .Values.podLabels }}
+{{ toYaml . | indent 8 }}
+{{- end }}
+{{- with .Values.podAnnotations }}
+      annotations:
+{{ toYaml . | indent 8 }}
+{{- end }}
+    spec:
+      {{- if .Values.redis.schedulerName }}
+      schedulerName: "{{ .Values.redis.schedulerName }}"
+      {{- end }}
+      {{- if .Values.redis.image.imagePullSecrets }}
+      imagePullSecrets:
+{{ toYaml .Values.redis.image.imagePullSecrets | indent 8 }}
+      {{- end }}
+      {{- if .Values.redis.priorityClassName }}
+      priorityClassName: "{{ .Values.redis.priorityClassName }}"
+      {{- end }}
+      securityContext:
+        fsGroup: {{ .Values.redis.fsGroup }}
+        runAsUser: {{ .Values.redis.runAsUser }}
+      containers:
+        - name: redis
+          image: {{ .Values.redis.image.repository}}:{{ .Values.redis.image.tag }}
+          imagePullPolicy: {{ .Values.redis.image.imagePullPolicy  }}
+          command: 
+            {{- toYaml .Values.redis.command | nindent 12 }}
+          ports:
+            - name: dbport
+              containerPort: 6379
+              protocol: TCP
+          {{- if .Values.redis.livenessProbe.enabled }}
+          livenessProbe:
+            initialDelaySeconds: {{ .Values.redis.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.redis.livenessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.redis.livenessProbe.timeoutSeconds }}
+            successThreshold: {{ .Values.redis.livenessProbe.successThreshold }}
+            failureThreshold: {{ .Values.redis.livenessProbe.failureThreshold }}
+            exec:
+              command:
+              - sh
+              - -c
+              - /health/ping_local.sh
+          {{- end }}
+          {{- if .Values.redis.readinessProbe.enabled}}
+          readinessProbe:
+            initialDelaySeconds: {{ .Values.redis.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.redis.readinessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.redis.readinessProbe.timeoutSeconds }}
+            successThreshold: {{ .Values.redis.readinessProbe.successThreshold }}
+            failureThreshold: {{ .Values.redis.readinessProbe.failureThreshold }}
+            exec:
+              command:
+              - sh
+              - -c
+              - /health/ping_local.sh
+          {{- end }}
+          env:
+{{ toYaml .Values.redis.image.env | indent 12 }}
+          resources:
+            {{- toYaml .Values.redis.resources | nindent 12 }}
+          volumeMounts:
+            - mountPath: {{ .Values.redis.volumes.timecontainerPath }}
+              readOnly: {{ .Values.redis.volumes.readOnlyType }}
+              name: {{ .Values.redis.volumes.timevolumeName }}
+            - mountPath: {{ .Values.redis.volumes.confcontainerPath }}
+              name: {{ .Values.redis.volumes.confvolumeName }}  
+            - mountPath: {{ .Values.redis.volumes.datacontainerPath }} 
+              name: {{ .Values.redis.volumes.datavolumeName }} 
+          lifecycle: 
+          {{- toYaml .Values.redis.lifecycle | nindent 12 }}
+        {{- with .Values.redis.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.redis.affinity }}
+      affinity:
+        {{ toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.redis.tolerations }}
+      tolerations:
+        {{ toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+        - name: {{ .Values.redis.volumes.timevolumeName }}
+          hostPath:
+            path: {{ .Values.redis.volumes.timehostPath }}
+        - name: {{ .Values.redis.volumes.confvolumeName }}
+          configMap:
+            defaultMode: {{.Values.redis.volumes.chmodValue }}
+            name: {{ .Values.redis.volumes.confvolumeName }}
+        - name: {{ .Values.redis.volumes.datavolumeName }}  
+          persistentVolumeClaim:
+            claimName: {{ .Values.redis.persistence.claimName }}
+  volumeClaimTemplates:
+    - metadata:
+        name: {{ .Values.redis.volumes.datavolumeName }}  
+        labels:
+          app: "{{ template "redis.name" . }}"
+          release: "{{ template "redis.name" . }}"
+      spec:
+        accessModes: [{{ .Values.redis.persistence.accessModes | quote }}]
+        resources:
+          requests: 
+            storage: {{ .Values.redis.persistence.size | quote }}

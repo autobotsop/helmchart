@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ template "osprey.name" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ template "osprey.name" . }}
+    chart: {{ template "osprey.chart" . }}
+    release: {{ template "osprey.name" . }}
+spec:
+  type: {{ .Values.osprey.service.type }}
+  ports:
+  {{- range $key, $value := .Values.osprey.service.ports }}
+    - name: {{ $key }}
+{{ toYaml $value | indent 6 }}
+  {{- end }}
+  selector:
+    app: {{ template "osprey.name" . }}
+    release: {{ template "osprey.name" . }}

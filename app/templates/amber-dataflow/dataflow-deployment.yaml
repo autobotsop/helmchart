@@ -1,0 +1,82 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ template "dataflow.name" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ template "dataflow.name" . }}
+    chart: {{ template "dataflow.chart" . }}
+    release: {{ template "dataflow.name" . }}{{- with .Values.deploymentAnnotations }}  annotations:{{ toYaml . | indent 4 }}{{- end }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ template "dataflow.name" . }}
+      release: {{ template "dataflow.name" . }}
+  strategy:
+{{- toYaml .Values.strategy | nindent 4 }}
+  template:
+    metadata:
+      labels:
+        app: {{ template "dataflow.name" . }}
+        release: {{ template "dataflow.name" . }}
+{{- with .Values.podLabels }}
+{{ toYaml . | indent 8 }}
+{{- end }}
+{{- with .Values.podAnnotations }}
+      annotations:
+{{ toYaml . | indent 8 }}
+{{- end }}
+    spec:
+      {{- if .Values.dataflow.schedulerName }}
+      schedulerName: "{{ .Values.dataflow.schedulerName }}"
+      {{- end }}
+      {{- if .Values.dataflow.image.imagePullSecrets }}
+      imagePullSecrets:
+{{ toYaml .Values.dataflow.image.imagePullSecrets | indent 8 }}
+      {{- end }}
+      {{- if .Values.priorityClassName }}
+      priorityClassName: "{{ .Values.priorityClassName }}"
+      {{- end }}
+      containers:
+        - name: dataflow
+          image: {{ .Values.dataflow.image.repository}}:{{ .Values.dataflow.image.tag }}
+          imagePullPolicy: {{ .Values.dataflow.image.imagePullPolicy  }}
+          command: 
+            {{- toYaml .Values.dataflow.command | nindent 12 }}
+          ports: 
+            - name: apiport
+              containerPort: 8090
+              protocol: TCP                             
+          env:
+{{ toYaml .Values.dataflow.env | indent 12 }}
+          resources:
+            {{- toYaml .Values.dataflow.resources | nindent 12 }}
+          volumeMounts:
+            {{- if .Values.dataflow.volumeMounts }}
+            {{- toYaml .Values.dataflow.volumeMounts | nindent 12 }}
+            {{- end }}
+            {{- range $key, $value := .Values.dataflow.secretMounts }}
+            - name: {{ $key }}
+              mountPath: {{ $value.mountPath }}
+            {{- end }}
+        {{- with .Values.dataflow.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.dataflow.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.dataflow.tolerations }}
+      tolerations:
+        {{ toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+        {{- toYaml .Values.dataflow.volumes | default "" | nindent 8 }}
+        {{- range $key, $value := .Values.dataflow.secretMounts }}
+        - name: {{ $key }}
+          secret:
+            secretName: {{ $value.secretName }}
+            defaultMode: {{ $value.defaultMode }}
+        {{- end }}

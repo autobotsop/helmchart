@@ -1,0 +1,85 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ template "searchapi.name" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ template "searchapi.name" . }}
+    chart: {{ template "searchapi.chart" . }}
+    release: {{ template "searchapi.name" . }}{{- with .Values.deploymentAnnotations }}  annotations:{{ toYaml . | indent 4 }}{{- end }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ template "searchapi.name" . }}
+      release: {{ template "searchapi.name" . }}
+  strategy:
+{{- toYaml .Values.strategy | nindent 4 }}
+  template:
+    metadata:
+      labels:
+        app: {{ template "searchapi.name" . }}
+        release: {{ template "searchapi.name" . }}
+{{- with .Values.podLabels }}
+{{ toYaml . | indent 8 }}
+{{- end }}
+{{- with .Values.podAnnotations }}
+      annotations:
+{{ toYaml . | indent 8 }}
+{{- end }}
+    spec:
+      {{- if .Values.schedulerName }}
+      schedulerName: "{{ .Values.schedulerName }}"
+      {{- end }}
+      {{- if .Values.search.image.imagePullSecrets }}
+      imagePullSecrets:
+{{ toYaml .Values.search.image.imagePullSecrets | indent 8 }}
+      {{- end }}
+      {{- if .Values.priorityClassName }}
+      priorityClassName: "{{ .Values.priorityClassName }}"
+      {{- end }}
+      containers:
+        - name: searchapi
+          image: {{ .Values.search.image.repository}}:{{ .Values.search.image.tag }}
+          imagePullPolicy: {{ .Values.search.image.imagePullPolicy  }}
+          command: 
+            {{- toYaml .Values.search.command | nindent 12 }}
+          ports: 
+            - name: apiport
+              containerPort: 8008
+              protocol: TCP
+            - name: rpcport
+              containerPort: 22205
+              protocol: TCP                       
+          env:
+{{ toYaml .Values.search.env | indent 12 }}
+          resources:
+            {{- toYaml .Values.search.resources | nindent 12 }}
+          volumeMounts:
+            {{- if .Values.search.volumeMounts }}
+            {{- toYaml .Values.search.volumeMounts | nindent 12 }}
+            {{- end }}
+            {{- range $key, $value := .Values.search.secretMounts }}
+            - name: {{ $key }}
+              mountPath: {{ $value.mountPath }}
+            {{- end }}
+        {{- with .Values.search.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.search.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.search.tolerations }}
+      tolerations:
+        {{ toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+        {{- toYaml .Values.search.volumes | default "" | nindent 8 }}
+        {{- range $key, $value := .Values.search.secretMounts }}
+        - name: {{ $key }}
+          secret:
+            secretName: {{ $value.secretName }}
+            defaultMode: {{ $value.defaultMode }}
+        {{- end }}

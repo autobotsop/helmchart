@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ template "metadataapi.name" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ template "metadataapi.name" . }}
+    chart: {{ template "metadataapi.chart" . }}
+    release: {{ template "metadataapi.name" . }}
+spec:
+  type: {{ .Values.metadata.service.type }}
+  ports:
+  {{- range $key, $value := .Values.metadata.service.ports }}
+    - name: {{ $key }}
+{{ toYaml $value | indent 6 }}
+  {{- end }}
+  selector:
+    app: {{ template "metadataapi.name" . }}
+    release: {{ template "metadataapi.name" . }}

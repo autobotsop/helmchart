@@ -1,0 +1,77 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ template "cdn.name" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ template "cdn.name" . }}
+    chart: {{ template "cdn.chart" . }}
+    release: {{ template "cdn.name" . }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ template "cdn.name" . }}
+      release: {{ template "cdn.name" . }}
+  strategy:
+{{- toYaml .Values.strategy | nindent 4 }}
+  template:
+    metadata:
+      labels:
+        app: {{ template "cdn.name" . }}
+        release: {{ template "cdn.name" . }}
+{{- with .Values.cdn.podLabels }}
+{{ toYaml . | indent 8 }}
+{{- end }}
+{{- with .Values.cdn.podAnnotations }}
+      annotations:
+{{ toYaml . | indent 8 }}
+{{- end }}
+    spec:
+      schedulerName: "{{ .Values.cdn.schedulerName }}"
+      imagePullSecrets:
+{{ toYaml .Values.cdn.image.imagePullSecrets | indent 8 }}
+      priorityClassName: "{{ .Values.cdn.priorityClassName }}"
+      securityContext:
+        fsGroup: {{ .Values.cdn.securityContext.fsGroup }}
+        runAsUser: {{ .Values.cdn.securityContext.runAsUser }}
+      serviceAccount: {{ .Values.cdn.serviceAccount.name }}
+      containers:
+        - name: cdn
+          image: {{ .Values.cdn.image.repository}}:{{ .Values.cdn.image.tag }}
+          imagePullPolicy: {{ .Values.cdn.image.imagePullPolicy  }}
+          command: 
+            {{- toYaml .Values.cdn.command | nindent 12 }}
+          ports:
+            - name: http
+              containerPort: 30080
+              protocol: TCP
+          env:
+{{ toYaml .Values.cdn.env | indent 12 }}
+          resources:
+            {{- toYaml .Values.cdn.resources | nindent 12 }}
+          volumeMounts:
+            - mountPath: {{ .Values.cdn.volumes.timecontainerPath }}
+              readOnly: {{ .Values.cdn.volumes.readOnlyType }}
+              name: {{ .Values.cdn.volumes.timevolumeName }}      
+            - mountPath: {{ .Values.cdn.persistence.mountPath }} 
+              name: {{ .Values.cdn.volumes.volumeName }}
+        {{- with .Values.cdn.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.cdn.affinity }}
+      affinity:
+        {{ toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.cdn.tolerations }}
+      tolerations:
+        {{ toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+        - name: {{ .Values.cdn.volumes.timevolumeName }}
+          hostPath:
+            path: {{ .Values.cdn.volumes.timehostPath }}
+        - name: {{ .Values.cdn.volumes.volumeName }}
+          persistentVolumeClaim:
+            claimName: {{ .Values.cdn.persistence.claimName }}

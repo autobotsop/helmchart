@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: namesrv
+  labels:
+    app: namesrv
+    chart: {{ template "namesrv.chart" . }}
+    release: {{ template "namesrv.name" . }}
+spec:
+  type: {{ .Values.namesrv.service.type }}
+  ports:
+  {{- range $key, $value := .Values.namesrv.service.ports }}
+    - name: {{ $key }}
+{{ toYaml $value | indent 6 }}
+  {{- end }}
+  selector:
+    app: {{ template "namesrv.name" . }}
+    release: {{ template "namesrv.name" . }}
